@@ -37,7 +37,7 @@ public class Player {
 
     public Player(float x, float y) {
         bounds = new Rectangle(x, y, 64, 64);
-        texture = new Texture("player.png");
+        texture = new Texture("Prince.png");
     }
 
     public void update(float delta, Rectangle ground) {
