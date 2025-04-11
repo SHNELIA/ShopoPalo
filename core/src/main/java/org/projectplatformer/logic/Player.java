@@ -25,7 +25,6 @@ public class Player {
     private float dashTime = 0.15f;
     private float dashTimer = 0;
     private int dashDirection = 0;
-
     private final float dashCooldownTime = 1.5f;
     private float dashCooldownTimer = 0;
 
@@ -36,7 +35,7 @@ public class Player {
     private Texture texture;
 
     public Player(float x, float y) {
-        bounds = new Rectangle(x, y, 64, 64);
+        bounds = new Rectangle(x, y, 33, 52);
         texture = new Texture("Prince.png");
     }
 
