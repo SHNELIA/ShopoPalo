@@ -25,7 +25,6 @@ public class Player {
     private float dashTime = 0.15f;
     private float dashTimer = 0;
     private int dashDirection = 0;
-
     private final float dashCooldownTime = 1.5f;
     private float dashCooldownTimer = 0;
 
