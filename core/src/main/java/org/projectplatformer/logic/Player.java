@@ -1,5 +1,6 @@
 package org.projectplatformer.logic;
 
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.utils.TimeUtils;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.graphics.Texture;
@@ -13,6 +14,8 @@ public class Player {
     private final float gravity = -20;
     private final float moveSpeed = 200;
     private final float jumpSpeed = 600;
+
+    private boolean isAlive = true;
 
     private int health = 100;
     private final int maxHealth = 100;
@@ -41,6 +44,7 @@ public class Player {
 
     public void update(float delta, Rectangle ground) {
         float currentTime = TimeUtils.nanoTime() / 1_000_000_000.0f;
+        if (!isAlive) return;
 
         if (dashCooldownTimer > 0) {
             dashCooldownTimer -= delta;
@@ -108,6 +112,25 @@ public class Player {
         }
     }
 
+    public void renderHitbox(ShapeRenderer renderer) {
+        renderer.setColor(1, 0, 0, 1); // червоний
+        renderer.rect(bounds.x, bounds.y, bounds.width, bounds.height);
+    }
+
+    public boolean isAlive() {
+        return isAlive;
+    }
+
+    public void respawn(float x, float y) {
+        bounds.x = x;
+        bounds.y = y;
+        health = maxHealth;
+        isAlive = true;
+        velocityY = 0;
+        jumpCount = 0;
+    }
+
+
     public boolean isOnGround(Rectangle ground) {
         return bounds.y <= ground.y + ground.height + 1 &&
             bounds.y >= ground.y + ground.height - 5 &&
@@ -132,11 +155,18 @@ public class Player {
     }
 
     public void takeDamage(int amount) {
+        if (!isAlive) return;
+
         health -= amount;
-        if (health < 0) health = 0;
+        if (health <= 0) {
+            health = 0;
+            isAlive = false;
+        }
     }
+
 
     public void dispose() {
         texture.dispose();
     }
+
 }
