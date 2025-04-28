@@ -35,8 +35,9 @@ public class Player {
     private int jumpCount = 0;
     private final int maxJumps = 2;
     private boolean touchingWall = false;
-    private final float wallJumpPush = 200f; // сила горизонтального відскоку від стіни
+    private final float wallJumpPush = 500f; // сила горизонтального відскоку від стіни
     private float velocityX = 0; // Нова змінна швидкості по X
+    private final float wallJumpUpBoost = 200f; // додаткова вертикальна сила wall-jump
 
 
 
@@ -65,10 +66,12 @@ public class Player {
         float currentTime = TimeUtils.nanoTime() / 1_000_000_000.0f;
         if (dashCooldownTimer > 0) dashCooldownTimer -= delta;
 
+// тут краще винести wallThreshold наверх, щоб потім використати і для відштовхування
+        float wallThreshold = 5f;
+
         // 2) Детекція торкання стіни
         touchingWall = false;
         boolean wallOnLeft = false, wallOnRight = false;
-        float wallThreshold = 5f;
         for (Rectangle platform : platforms) {
             float pTop    = bounds.y + bounds.height;
             float pBottom = bounds.y;
@@ -99,18 +102,34 @@ public class Player {
         );
 
         // якщо сповзаємо по стіні, знову можемо wall-jump
-        if (touchingWall && velocityY < 0) jumpCount = 1;
+        if (touchingWall && velocityY < 0) {
+            jumpCount = 0;
+        }
 
         // 5) Стрибок і wall-jump
+        boolean justWallJumped = false;
+        boolean sliding = touchingWall && velocityY < 0;
         if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
-            if (touchingWall || holdingWall) {
-                // wall-jump
-                velocityY = jumpSpeed;
-                jumpCount = 1;
-                velocityX = wallOnRight ? wallJumpPush : -wallJumpPush;
-                facingRight = wallOnRight;
-            } else if (jumpCount < maxJumps) {
-                // звичайний або подвійний стрибок
+            if (sliding) {
+                // вертикальний + додатковий імпульс вгору
+                velocityY = jumpSpeed + wallJumpUpBoost;
+                jumpCount = maxJumps;
+
+                // горизонтальний імпульс і відсаджування від стіни
+                if (wallOnRight) {
+                    velocityX = -wallJumpPush;
+                    bounds.x -= (wallThreshold + 1);
+                    facingRight = false;
+                } else {
+                    velocityX = wallJumpPush;
+                    bounds.x += (wallThreshold + 1);
+                    facingRight = true;
+                }
+
+                // щоб на цьому ж кадрі не обрубати velocityY>0
+                justWallJumped = true;
+            }
+            else if (jumpCount < maxJumps) {
                 velocityY = jumpSpeed;
                 jumpCount++;
             }
@@ -128,10 +147,11 @@ public class Player {
 
         // 7) Гравітація та обмежене сповзання при утриманні
         velocityY += gravity * delta;
-        if (holdingWall) {
-            if (velocityY > 0) velocityY = 0;     // зупинити підйом
-            if (velocityY < -50) velocityY = -50; // обмежити швидкість спуску
+        if (holdingWall && !justWallJumped) {
+            if (velocityY > 0)  velocityY = 0;
+            if (velocityY < -50) velocityY = -50;
         }
+
         bounds.y += velocityY * delta;
 
         // 8) Виконання dash
@@ -253,5 +273,7 @@ public class Player {
     public Rectangle getBounds() {
         return bounds;
     }
-
+    public boolean isFacingRight() {
+        return facingRight;
+    }
 }

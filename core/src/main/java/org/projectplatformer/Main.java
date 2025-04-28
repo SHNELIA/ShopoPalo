@@ -17,39 +17,49 @@ import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.utils.ScreenUtils;
-import com.badlogic.gdx.utils.viewport.ScreenViewport;
+import com.badlogic.gdx.utils.viewport.FitViewport;
+import com.badlogic.gdx.utils.viewport.Viewport;
 import org.projectplatformer.levellogic.Level;
 import org.projectplatformer.levels.TestLevel;
-import org.projectplatformer.objectslogic.*;
+import org.projectplatformer.objectslogic.GameObject;
+import org.projectplatformer.objectslogic.Item;
+import org.projectplatformer.objectslogic.Player;
+import org.projectplatformer.objectslogic.World;
 
 import java.util.ArrayList;
 
 public class Main extends ApplicationAdapter {
+    private static final float WORLD_WIDTH  = 800;
+    private static final float WORLD_HEIGHT = 480;
+    // швидкість “плавності” камери (чим більше — тим швидше підтягується)
+    private static final float CAMERA_LERP = 3f;
+
     private SpriteBatch batch;
     private ShapeRenderer shapeRenderer;
     private OrthographicCamera camera;
-    private AssetManager assetManager;
+    private Viewport gameViewport;
 
     private Stage uiStage;
     private Skin skin;
     private TextButton respawnButton;
     private Label deathLabel;
 
-    private boolean loading = true;
     private BitmapFont font;
+    private AssetManager assetManager;
+    private boolean loading = true;
 
     private Level currentLevel;
     private World world;
     private Player player;
-
     private SaveData saveData;
 
     @Override
     public void create() {
         batch = new SpriteBatch();
         shapeRenderer = new ShapeRenderer();
+
         camera = new OrthographicCamera();
-        camera.setToOrtho(false, 800, 480);
+        gameViewport = new FitViewport(WORLD_WIDTH, WORLD_HEIGHT, camera);
 
         font = new BitmapFont();
         assetManager = new AssetManager();
@@ -63,16 +73,14 @@ public class Main extends ApplicationAdapter {
     }
 
     private void setupUI() {
-        uiStage = new Stage(new ScreenViewport());
-        Gdx.input.setInputProcessor(uiStage);
-
+        uiStage = new Stage(new FitViewport(WORLD_WIDTH, WORLD_HEIGHT));
         deathLabel = new Label("You are dead", skin);
         respawnButton = new TextButton("Respawn", skin);
         respawnButton.addListener(new ChangeListener() {
             @Override
-            public void changed(ChangeEvent event, Actor actor) {
+            public void changed(ChangeListener.ChangeEvent event, Actor actor) {
                 if (player != null && !player.isAlive()) {
-                    restartLevel(); // ОНОВЛЕННЯ СЮДИ
+                    restartLevel();
                 }
             }
         });
@@ -86,12 +94,10 @@ public class Main extends ApplicationAdapter {
 
     private void finishLoading() {
         assetManager.finishLoading();
-
         world = new World();
         player = new Player(100, 100);
         currentLevel = new TestLevel(assetManager);
         currentLevel.createLevel(world);
-
         loading = false;
     }
 
@@ -101,9 +107,7 @@ public class Main extends ApplicationAdapter {
         ScreenUtils.clear(0.15f, 0.15f, 0.2f, 1);
 
         if (loading) {
-            if (assetManager.update()) {
-                finishLoading();
-            }
+            if (assetManager.update()) finishLoading();
             drawLoadingScreen();
             return;
         }
@@ -113,98 +117,119 @@ public class Main extends ApplicationAdapter {
         }
 
         if (player != null && player.isAlive()) {
+            // гра отримує введення
+            if (Gdx.input.getInputProcessor() != null) {
+                Gdx.input.setInputProcessor(null);
+            }
+
+            // оновлення гри
             player.update(delta, world.getPlatformBounds());
             world.update(delta);
-        } else {
-            uiStage.act(delta);
-        }
 
-        // Перевірка підбору предметів
-        ArrayList<GameObject> toRemove = new ArrayList<>();
-        for (GameObject obj : world.getObjects()) {
-            if (obj instanceof Item) {
-                Item item = (Item) obj;
-                if (player.getBounds().overlaps(item.getBounds())) {
-                    if (!saveData.isItemCollected(item.getId())) {
+            // підбір предметів
+            ArrayList<GameObject> toRemove = new ArrayList<>();
+            for (GameObject obj : world.getObjects()) {
+                if (obj instanceof Item) {
+                    Item item = (Item) obj;
+                    if (player.getBounds().overlaps(item.getBounds()) &&
+                        !saveData.isItemCollected(item.getId())) {
                         saveData.collectItem(item.getId());
                         saveData.addCoins(1);
                         toRemove.add(obj);
                     }
                 }
             }
-        }
+            for (GameObject obj : toRemove) world.removeObject(obj);
 
-        // Видалення підібраних предметів
-        for (GameObject obj : toRemove) {
-            world.removeObject(obj);
-        }
+            // ————— Нова логіка камери —————
+            // 1) Центр персонажа
+            float px = player.getX() + player.getBounds().width  / 2f;
+            float py = player.getY() + player.getBounds().height / 2f;
+            // 2) Зсув вперед/назад: гравець на 1/3 ширини зліва (2/3 — попереду)
+            float bias = WORLD_WIDTH / 6f;
+            float targetX = px + (player.isFacingRight() ?  bias : -bias);
+            float targetY = py;
+            // 3) Плавна інтерполяція (lerp)
+            camera.position.x += (targetX - camera.position.x) * CAMERA_LERP * delta;
+            camera.position.y += (targetY - camera.position.y) * CAMERA_LERP * delta;
+            // 4) Наносимо зміни у viewport та оновлюємо камеру
+            gameViewport.apply(false);
+            camera.update();
+            // ————————————————————————————
 
-        camera.position.set(player.getX() + 32, player.getY() + 32, 0);
-        camera.update();
+            // рендер світу
+            batch.setProjectionMatrix(camera.combined);
+            batch.begin();
+            world.render(batch);
+            player.render(batch);
+            font.draw(batch, "Coins: " + saveData.getCoins(),
+                camera.position.x + 300,
+                camera.position.y + 200);
+            batch.end();
 
-        batch.setProjectionMatrix(camera.combined);
-        batch.begin();
-        world.render(batch);
-        player.render(batch);
+            // хітбокси та health bar
+            shapeRenderer.setProjectionMatrix(camera.combined);
+            shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
+            player.renderHitbox(shapeRenderer);
+            shapeRenderer.end();
 
-        // Малюємо кількість монет у правому верхньому куті
-        font.draw(batch, "Coins: " + saveData.getCoins(), camera.position.x + 300, camera.position.y + 200);
+            shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+            float healthBarX = camera.position.x - 390;
+            float healthBarY = camera.position.y + 200;
+            float barW = 200, barH = 20;
+            float pct = (float) player.getHealth() / player.getMaxHealth();
+            shapeRenderer.setColor(0.8f, 0.1f, 0.1f, 1);
+            shapeRenderer.rect(healthBarX, healthBarY, barW, barH);
+            shapeRenderer.setColor(0.1f, 0.8f, 0.1f, 1);
+            shapeRenderer.rect(healthBarX, healthBarY, barW * pct, barH);
+            shapeRenderer.end();
 
-        batch.end();
-
-        // Малюємо хітбокси
-        shapeRenderer.setProjectionMatrix(camera.combined);
-        shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
-        player.renderHitbox(shapeRenderer);
-        shapeRenderer.end();
-
-        shapeRenderer.setProjectionMatrix(camera.combined);
-        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-        float healthBarX = camera.position.x - 390;
-        float healthBarY = camera.position.y + 200;
-        float barWidth = 200;
-        float barHeight = 20;
-        float healthPercent = (float) player.getHealth() / player.getMaxHealth();
-        shapeRenderer.setColor(0.8f, 0.1f, 0.1f, 1);
-        shapeRenderer.rect(healthBarX, healthBarY, barWidth, barHeight);
-        shapeRenderer.setColor(0.1f, 0.8f, 0.1f, 1);
-        shapeRenderer.rect(healthBarX, healthBarY, barWidth * healthPercent, barHeight);
-        shapeRenderer.end();
-
-        if (!player.isAlive()) {
+        } else {
+            // UI приймає введення
+            if (Gdx.input.getInputProcessor() != uiStage) {
+                Gdx.input.setInputProcessor(uiStage);
+            }
+            uiStage.act(delta);
             uiStage.draw();
         }
     }
 
+    @Override
+    public void resize(int width, int height) {
+        // зберігаємо поточний центр, щоб не “стрибали” під час resize
+        float cx = camera.position.x;
+        float cy = camera.position.y;
+
+        gameViewport.update(width, height, false);
+        uiStage.getViewport().update(width, height, true);
+
+        // повертаємо камеру на попередній центр
+        camera.position.set(cx, cy, 0);
+        camera.update();
+    }
+
     private void restartLevel() {
-        // Обнуляємо дані
         saveData.resetCollectedItems();
         saveData.resetCoins();
-
-        // Створюємо новий світ
         world = new World();
         player = new Player(100, 100);
-
-        // Створюємо рівень наново
         currentLevel.createLevel(world);
-
-        // Повертаємо управління на сцену (якщо гравець натисне "Respawn")
         Gdx.input.setInputProcessor(null);
     }
 
     private void drawLoadingScreen() {
         batch.begin();
-        font.draw(batch, "Loading assets...", 350, 240);
+        font.draw(batch, "Loading assets...", WORLD_WIDTH / 2f - 60, WORLD_HEIGHT / 2f);
         batch.end();
     }
 
     @Override
     public void dispose() {
-        if (batch != null) batch.dispose();
+        if (batch != null)         batch.dispose();
         if (shapeRenderer != null) shapeRenderer.dispose();
-        if (player != null) player.dispose();
-        if (assetManager != null) assetManager.dispose();
-        if (uiStage != null) uiStage.dispose();
-        if (font != null) font.dispose();
+        if (player != null)        player.dispose();
+        if (assetManager != null)  assetManager.dispose();
+        if (uiStage != null)       uiStage.dispose();
+        if (font != null)          font.dispose();
     }
 }
