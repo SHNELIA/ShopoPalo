@@ -36,11 +36,12 @@ public class TestLevel extends Level {
         world.addObject(p3);
 
         // Стіни біля платформ для тесту відштовхування
-        Platform wall1 = new Platform(250, 150, 20, 100, defaultTexture); // Ліва стіна біля p1
+        Platform wall1 = new Platform(250, 150, 20, 400, defaultTexture); // Ліва стіна біля p1
         Platform wall2 = new Platform(800, 250, 20, 100, defaultTexture); // Права стіна біля p2
-
+        Platform wall3 = new Platform(100, 150, 20, 400, defaultTexture); // Ліва стіна біля p1
         world.addObject(wall1);
         world.addObject(wall2);
+        world.addObject(wall3);
 
         // Монета
         Item coin = new Item(950, 400, coinTexture);
