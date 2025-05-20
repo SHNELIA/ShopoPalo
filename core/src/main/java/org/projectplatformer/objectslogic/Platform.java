@@ -15,6 +15,6 @@ public class Platform extends GameObject {
 
     @Override
     public void render(SpriteBatch batch) {
-        batch.draw(texture, bounds.x, bounds.y, bounds.width, bounds.height);
+        // нічого не малюємо, бо візуал дає TiledMapRenderer
     }
 }
