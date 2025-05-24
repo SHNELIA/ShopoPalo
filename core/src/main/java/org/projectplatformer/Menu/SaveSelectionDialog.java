@@ -67,9 +67,9 @@ import java.awt.event.MouseEvent;
             buttonsPanel.setBorder(new EmptyBorder(0, 0, 20, 0));
 
             String[] saveFiles = {
-                "Save Slot 1<br>Level 3 (2 hours ago)<br>Progress: 60%",
-                "Save Slot 2<br>Level 1 (5 days ago)<br>Progress: 15%",
-                "Save Slot 3<br>Level 5 (1 week ago)<br>Progress: 85%",
+                "Save 1",
+                "Save 2",
+                "Save 3",
                 "Empty Slot<br>New Game"
             };
 

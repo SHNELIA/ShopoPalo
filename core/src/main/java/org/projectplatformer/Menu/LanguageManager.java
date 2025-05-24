@@ -50,7 +50,7 @@ public class LanguageManager {
         english.put("settingsWindow_saved", "Saved");
         english.put("newGameConfirm_message", "Starting a new game will erase unsaved progress. Continue?");
         english.put("newGameConfirm_title", "New Game Confirmation");
-        english.put("gameScreen_title", "Game Screen");
+        english.put("gameWindow_title", "Game Screen");
         english.put("startGame_loadingSaved", "Loading saved game...");
         english.put("startGame_startingNew", "Starting new game...");
         english.put("startGame_title", "Game Start");
