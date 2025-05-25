@@ -13,33 +13,36 @@ import java.util.List;
  * Ворог «Гоблін» з патрулюванням, переслідуванням та атакою мечем.
  */
 public class Goblin extends BaseEnemy {
-    private static final float PATROL_RADIUS     =  80f;
-    private static final float PATROL_SPEED      =  50f;
-    private static final float DETECTION_RANGE   = 150f;
-    private static final float CHASE_SPEED       = 120f;
-    private static final float MELEE_RANGE       =  80f;
-    private static final float JUMP_SPEED        = 400f;
-    private static final float STEP_UP_SPEED     = 400f;
-    private static final float ATTACK_DURATION   = 0.45f;
-    private static final float ATTACK_COOLDOWN   = 1.20f;
-    private static final int   ATTACK_DAMAGE     =  16;
+    private static final float PATROL_RADIUS   = 80f;
+    private static final float PATROL_SPEED    = 50f;
+    private static final float DETECTION_RANGE = 150f;
+    private static final float CHASE_SPEED     = 120f;
+    private static final float JUMP_SPEED      = 400f;
+    private static final float STEP_UP_SPEED   = 400f;
+
+    private static final float ATTACK_DURATION = 0.45f; // тривалість слеша
+    private static final float ATTACK_COOLDOWN = 1.20f; // кулдаун між ударами
+    private static final int   ATTACK_DAMAGE   = 16;    // Шкода одного удару
+    private static final float MELEE_RANGE     = 70f;   // Дальність атаки
 
     private final SwordWeapon slashWeapon;
-    private final float      patrolCenterX;
-    private float            patrolDir   = 1f;
-    private boolean          facingRight = true;
+    private final float       patrolCenterX;
+    private float             patrolDir   = 1f;
+    private boolean           facingRight = true;
 
     public Goblin(float x, float y, Texture texture) {
         super(
             x, y,
-            32f, 32f,        // width, height
+            32f, 48f,      // width, height
             texture,
-            50,              // health
-            -2000f,          // gravity
-            -1000f,          // max fall speed
-            0.9f,            // drag
-            16f, 400f        // maxStepHeight, stepUpSpeed
+            50,            // health
+            -2000f,        // gravity
+            -1000f,        // max fall speed
+            0.9f,          // drag
+            16f, 400f      // maxStepHeight, stepUpSpeed
         );
+
+        // Передаємо лише duration, cooldown і damage
         this.slashWeapon   = new SwordWeapon(
             ATTACK_DURATION,
             ATTACK_COOLDOWN,
@@ -50,26 +53,29 @@ public class Goblin extends BaseEnemy {
 
     @Override
     public void update(float delta, Player player, List<Rectangle> platforms) {
-        // 1) Оновлюємо меч
         Rectangle b      = getBounds();
         float     pivotX = b.x + b.width  / 2f;
         float     pivotY = b.y + b.height * 0.7f;
+
+        // 1) Оновлюємо меч
         slashWeapon.update(delta, pivotX, pivotY, facingRight);
 
-        // 2) Якщо гравець у межах досяжності та кулдаун минув — почати удар
-        float dx    = (player.getBounds().x + player.getBounds().width/2f) - pivotX;
-        float dist2 = dx*dx;
-        if (dist2 <= MELEE_RANGE * MELEE_RANGE
+        // 2) Завжди дивимось на гравця
+        float playerCX = player.getBounds().x + player.getBounds().width / 2f;
+        facingRight = playerCX > pivotX;
+
+        // 3) Якщо гравець в радіусі та кулдаун минув — атакуємо
+        float dx = playerCX - pivotX;
+        if (dx*dx <= MELEE_RANGE * MELEE_RANGE
             && slashWeapon.getCooldownRemaining() <= 0f)
         {
-            facingRight = dx > 0;
             slashWeapon.startAttack(pivotX, pivotY, facingRight);
         }
 
-        // 3) Наносимо шкоду гравцю (лише раз за один удар)
+        // 4) Наносимо шкоду (лише раз за удар)
         slashWeapon.applyDamage(player);
 
-        // 4) Далі обробляємо звичайний рух/AI/фізику
+        // 5) Інше: рух/AI/фізика
         super.update(delta, player, platforms);
     }
 
@@ -77,12 +83,14 @@ public class Goblin extends BaseEnemy {
     protected void aiMove(float delta, Player player, List<Rectangle> platforms) {
         Rectangle b = getBounds();
 
-        // 0) Якщо під наступним кроком немає опори — розвернутися
-        float belowX      = b.x + b.width/2f;
-        Rectangle belowP  = new Rectangle(belowX, 0f, 0.1f, b.y);
+        // 0) Якщо перед обрив — розвернутися
+        float belowX = b.x + b.width/2f;
+        Rectangle belowProbe = new Rectangle(belowX, 0f, 0.1f, b.y);
         boolean hasGround = false;
         for (Rectangle p : platforms) {
-            if (belowX >= p.x && belowX <= p.x + p.width && p.y + p.height <= b.y) {
+            if (belowX >= p.x && belowX <= p.x + p.width
+                && p.y + p.height <= b.y)
+            {
                 hasGround = true;
                 break;
             }
@@ -94,11 +102,12 @@ public class Goblin extends BaseEnemy {
             return;
         }
 
-        // 1) Переслідування чи патруль
-        float px    = player.getBounds().x + player.getBounds().width/2f;
-        float cx    = b.x + b.width/2f;
-        float dx    = px - cx;
-        float dist2 = dx*dx;
+        // 1) Переслідування vs патруль
+        float playerCX = player.getBounds().x + player.getBounds().width/2f;
+        float cx       = b.x + b.width/2f;
+        float dx       = playerCX - cx;
+        float dist2    = dx*dx;
+
         if (dist2 <= MELEE_RANGE * MELEE_RANGE) {
             physics.setVelocityX(0f);
             return;
@@ -120,9 +129,9 @@ public class Goblin extends BaseEnemy {
             facingRight = patrolDir > 0;
         }
 
-        // 2) Step-up / jump logic
-        float probeX   = facingRight ? b.x + b.width + 2f : b.x - 2f;
-        Rectangle probe= new Rectangle(probeX, b.y, 2f, b.height);
+        // 2) Step-up / перепригування
+        float aheadX    = facingRight ? b.x + b.width + 2f : b.x - 2f;
+        Rectangle probe = new Rectangle(aheadX, b.y, 2f, b.height);
         boolean wallAhead = false;
         Rectangle hitP    = null;
         for (Rectangle p : platforms) {
@@ -133,11 +142,11 @@ public class Goblin extends BaseEnemy {
             }
         }
 
-        float footX    = b.x + b.width/2f + (facingRight ? 6f : -6f);
-        Rectangle foot = new Rectangle(footX, b.y - 4f, 4f, 4f);
+        float footX       = b.x + b.width/2f + (facingRight ? 6f : -6f);
+        Rectangle footPrb = new Rectangle(footX, b.y - 4f, 4f, 4f);
         boolean groundAhead = false;
         for (Rectangle p : platforms) {
-            if (foot.overlaps(p)) {
+            if (footPrb.overlaps(p)) {
                 groundAhead = true;
                 break;
             }
