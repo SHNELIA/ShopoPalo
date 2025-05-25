@@ -3,83 +3,58 @@ package org.projectplatformer.objectslogic;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.Rectangle;
 import org.projectplatformer.enemy.BaseEnemy;
+import org.projectplatformer.player.Player;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-/**
- * Клас, що представляє ігровий світ: об'єкти, вороги, логіка оновлення та рендер.
- */
 public class World {
-    private List<GameObject> objects = new ArrayList<>();  // Усі об'єкти світу (платформи, тощо)
-    private List<BaseEnemy> enemies = new ArrayList<>();   // Активні вороги
+    private final List<GameObject>   objects = new ArrayList<>();
+    private final List<BaseEnemy>    enemies = new ArrayList<>();
 
-    /** Додає новий об'єкт у світ */
-    public void addObject(GameObject obj) {
-        objects.add(obj);
-    }
+    public void addObject(GameObject obj)      { objects.add(obj); }
+    public void removeObject(GameObject obj)   { objects.remove(obj); }
+    public List<GameObject> getObjects()       { return objects; }
 
-    /** Видаляє об'єкт зі світу */
-    public void removeObject(GameObject obj) {
-        objects.remove(obj);
-    }
+    public void addEnemy(BaseEnemy e)          { enemies.add(e); }
+    public void removeEnemy(BaseEnemy e)       { enemies.remove(e); }
+    public List<BaseEnemy> getEnemies()        { return enemies; }
 
-    /** Повертає список усіх об'єктів */
-    public List<GameObject> getObjects() {
-        return objects;
-    }
-
-    /** Повертає хітбокси всіх платформ (для колізій з гравцем) */
+    /** Всі платформи (хітбокси) для колізій */
     public List<Rectangle> getPlatformBounds() {
-        List<Rectangle> bounds = new ArrayList<>();
+        List<Rectangle> list = new ArrayList<>();
         for (GameObject obj : objects) {
             if (obj instanceof Platform) {
-                bounds.add(((Platform) obj).getBounds());
+                list.add(((Platform)obj).getBounds());
             }
         }
-        return bounds;
+        return list;
     }
 
-    /** Додає ворога до світу */
-    public void addEnemy(BaseEnemy e) {
-        enemies.add(e);
-    }
-
-    /** Повертає список активних ворогів */
-    public List<BaseEnemy> getEnemies() {
-        return enemies;
-    }
-
-    /** Видаляє ворога зі світу */
-    public void removeEnemy(BaseEnemy e) {
-        enemies.remove(e);
-    }
-
-    /** Оновлює стан усіх об'єктів та ворогів */
-    public void update(float deltaTime) {
+    /** Оновлення світу — нова сигнатура */
+    public void update(float delta, Player player, List<Rectangle> platforms) {
+        // 1) Оновити всі нерухомі об’єкти (Item, Platform тощо)
         for (GameObject obj : objects) {
-            obj.update(deltaTime);
+            obj.update(delta);
         }
 
+        // 2) Оновити всіх ворогів із фізикою, AI та атакою
         Iterator<BaseEnemy> it = enemies.iterator();
         while (it.hasNext()) {
             BaseEnemy e = it.next();
-            e.update(deltaTime);
             if (!e.isAlive()) {
                 e.dispose();
                 it.remove();
+            } else {
+                e.update(delta, player, platforms); // <- Тепер передаємо платформи
             }
         }
     }
 
-    /** Малює всі об'єкти та ворогів */
+    /** Рендер всіх об’єктів і ворогів */
     public void render(SpriteBatch batch) {
-        for (GameObject obj : objects) {
-            obj.render(batch);
-        }
-        for (BaseEnemy e : enemies) {
-            e.render(batch);
-        }
+        for (GameObject obj : objects) obj.render(batch);
+        for (BaseEnemy  e   : enemies)  e.render(batch);
     }
 }

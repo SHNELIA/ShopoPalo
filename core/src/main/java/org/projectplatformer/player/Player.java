@@ -9,143 +9,104 @@ import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.utils.TimeUtils;
 import org.projectplatformer.enemy.BaseEnemy;
+import org.projectplatformer.physics.PhysicsComponent;
+import org.projectplatformer.weapon.SpearWeapon;
+import org.projectplatformer.weapon.SwordWeapon;
+import org.projectplatformer.weapon.Weapon;
 
 import java.util.List;
 
-/** Гравець: рух, стрибки, даш, атака, життя, монети */
+/**
+ * Гравець: рух, стрибки, dash, wall-slide/jump/karabkannia,
+ * вибір зброї, атака, збір монет, отримання шкоди.
+ */
 public class Player {
-    private final Rectangle bounds;
-    private float velocityX = 0f, velocityY = 0f;
+    private final PhysicsComponent physics;
+    private final Texture          texture;
+    private Weapon                 currentWeapon;
 
-    // Границі світу
-    private float worldWidth = Float.MAX_VALUE;
+    // Межі світу
+    private float worldWidth  = Float.MAX_VALUE;
     private float worldHeight = Float.MAX_VALUE;
     public void setWorldBounds(float w, float h) {
         this.worldWidth = w;
         this.worldHeight = h;
     }
 
-    // Константи
-    private static final float GRAVITY = -3000f;
-    private static final float MOVE_SPEED = 200f;
-    private static final float JUMP_SPEED = 600f;
-    private static final int MAX_JUMPS = 2;
+    // Рух
+    private static final float MOVE_SPEED   = 200f;
+    private static final float JUMP_SPEED   = 600f;
+    private static final int   MAX_JUMPS    = 2;
+
+    // Wall-jump параметри
     private static final float WALL_THRESHOLD = 5f;
+    private static final float WALL_JUMP_UP   = 200f;
     private static final float WALL_JUMP_PUSH = 500f;
-    private static final float WALL_JUMP_UP = 200f;
-    private static final float DASH_SPEED = 400f;
-    private static final float DASH_TIME = 0.15f;
-    private static final float DASH_COOLDOWN = 1.0f;
+
+    // Dash
+    private static final float DASH_SPEED      = 400f;
+    private static final float DASH_TIME       = 0.15f;
+    private static final float DASH_COOLDOWN   = 1.0f;
     private static final float DOUBLE_TAP_TIME = 0.25f;
-    private static final float ATTACK_RANGE = 40f;
-    private static final int ATTACK_DAMAGE = 25;
+    private float dashTimer         = 0f;
+    private float dashCooldownTimer = 0f;
+    private float lastLeftTapTime   = -1f;
+    private float lastRightTapTime  = -1f;
+    private int   dashDirection     = 0;
+
+    // Атака
+    private boolean attacking      = false;
+    private float   attackTimer    = 0f;
+    private float   attackCooldown = 0f;
     private static final float ATTACK_DURATION = 0.2f;
     private static final float ATTACK_COOLDOWN = 0.5f;
+    private static final float ATTACK_RANGE    = 40f;
+    private static final int   ATTACK_DAMAGE   = 25;
+
+    // Отримання шкоди
+    private float damageCooldown = 0f;
     private static final float DAMAGE_COOLDOWN = 1f;
 
-    // Стан
+    // Інші стани
     private boolean facingRight = true;
-    private boolean isAlive = true;
-    private int health = 100;
+    private boolean isAlive     = true;
+    private int     health      = 100;
     private final int maxHealth = 100;
-    private int jumpCount = 0;
-    private int coins = 0;
-
-    // Таймери
-    private float dashTimer = 0f;
-    private float dashCooldownTimer = 0f;
-    private int dashDirection = 0;
-    private float lastLeftTapTime = -1f;
-    private float lastRightTapTime = -1f;
-    private boolean attacking = false;
-    private float attackTimer = 0f;
-    private float attackCooldown = 0f;
-    private float damageCooldown = 0f;
-
-    private Texture texture;
+    private int     coins       = 0;
+    private int     jumpCount   = 0;
 
     public Player(float x, float y) {
-        bounds = new Rectangle(x, y, 33, 52);
+        Rectangle bounds = new Rectangle(x, y, 33, 52);
+        physics = new PhysicsComponent(
+            bounds,
+            -3000f,  // gravity
+            -1000f,  // maxFallSpeed
+            0.9f,    // drag
+            16f,     // maxStepHeight
+            200f     // stepUpSpeed
+        );
         texture = new Texture("Prince.png");
+        currentWeapon = new SwordWeapon();
     }
 
-    /** Оновлення стану гравця */
     public void update(float delta, List<Rectangle> platforms, List<BaseEnemy> enemies) {
         if (!isAlive) return;
 
         // Оновлення таймерів
-        damageCooldown = Math.max(0f, damageCooldown - delta);
+        damageCooldown    = Math.max(0f, damageCooldown - delta);
         dashCooldownTimer = Math.max(0f, dashCooldownTimer - delta);
-        attackCooldown = Math.max(0f, attackCooldown - delta);
+        attackCooldown    = Math.max(0f, attackCooldown - delta);
         if (attacking) {
             attackTimer -= delta;
             if (attackTimer <= 0f) attacking = false;
         }
+        float now = TimeUtils.nanoTime()/1e9f;
 
-        float now = TimeUtils.nanoTime() / 1e9f;
+        Rectangle b = physics.getBounds();
 
-        // Горизонтальний рух
-        if (Gdx.input.isKeyPressed(Input.Keys.A)) {
-            bounds.x -= MOVE_SPEED * delta;
-            facingRight = false;
-        }
-        if (Gdx.input.isKeyPressed(Input.Keys.D)) {
-            bounds.x += MOVE_SPEED * delta;
-            facingRight = true;
-        }
+        float velY = physics.getVelocityY();
 
-        // Детекція стіни
-        boolean touchingWall = false, wallOnLeft = false, wallOnRight = false;
-        if (velocityY < 0) {
-            for (Rectangle p : platforms) {
-                if (bounds.overlaps(p)) {
-                    float dxL = bounds.x - (p.x + p.width);
-                    float dxR = p.x - (bounds.x + bounds.width);
-                    if (Math.abs(dxL) < WALL_THRESHOLD) touchingWall = wallOnLeft = true;
-                    if (Math.abs(dxR) < WALL_THRESHOLD) touchingWall = wallOnRight = true;
-                }
-            }
-        }
-        boolean sliding = touchingWall && velocityY < 0;
-
-        // Стрибок / стрибок від стіни
-        boolean justWallJumped = false;
-        if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
-            if (sliding) {
-                velocityY = JUMP_SPEED + WALL_JUMP_UP;
-                jumpCount = MAX_JUMPS;
-                if (wallOnRight) {
-                    velocityX = -WALL_JUMP_PUSH;
-                    facingRight = false;
-                } else {
-                    velocityX = WALL_JUMP_PUSH;
-                    facingRight = true;
-                }
-                justWallJumped = true;
-            } else if (jumpCount < MAX_JUMPS) {
-                velocityY = JUMP_SPEED;
-                jumpCount++;
-            }
-        }
-
-        // Атака
-        if (Gdx.input.isKeyJustPressed(Input.Keys.J) && attackCooldown <= 0f) {
-            attacking = true;
-            attackTimer = ATTACK_DURATION;
-            attackCooldown = ATTACK_COOLDOWN;
-            float hbY = bounds.y + bounds.height * 0.25f;
-            float hbH = bounds.height * 0.5f;
-            Rectangle hb = facingRight
-                ? new Rectangle(bounds.x + bounds.width, hbY, ATTACK_RANGE, hbH)
-                : new Rectangle(bounds.x - ATTACK_RANGE, hbY, ATTACK_RANGE, hbH);
-            for (BaseEnemy e : enemies) {
-                if (e.isAlive() && hb.overlaps(e.getBounds())) {
-                    e.takeDamage(ATTACK_DAMAGE);
-                }
-            }
-        }
-
-        // Даш через подвійне натискання
+        // --- Dash ---
         if (Gdx.input.isKeyJustPressed(Input.Keys.A)) {
             if (now - lastLeftTapTime <= DOUBLE_TAP_TIME && dashCooldownTimer <= 0f) {
                 dashTimer = DASH_TIME;
@@ -162,114 +123,132 @@ public class Player {
             }
             lastRightTapTime = now;
         }
-
-        // Гравітація та ковзання по стіні
-        velocityY += GRAVITY * delta;
-        if (sliding && !justWallJumped) {
-            velocityY = MathUtils.clamp(velocityY, -50f, Float.MAX_VALUE);
-        }
-        bounds.y += velocityY * delta;
-
-        // Застосування дашу
         if (dashTimer > 0f) {
-            bounds.x += dashDirection * DASH_SPEED * delta;
+            physics.setVelocityX(dashDirection * DASH_SPEED);
             dashTimer -= delta;
         } else {
-            velocityX *= 0.9f;
-        }
-
-        // Колізії з платформами
-        for (Rectangle p : platforms) {
-            if (!bounds.overlaps(p)) continue;
-            float pb = bounds.y, pt = bounds.y + bounds.height;
-            float pl = bounds.x, pr = bounds.x + bounds.width;
-            float ob = pt - p.y, ot = p.y + p.height - pb;
-            float ol = pr - p.x, or_ = p.x + p.width - pl;
-            boolean fromTop = ot < ob && ot < ol && ot < or_;
-            boolean fromBottom = ob < ot && ob < ol && ob < or_;
-            boolean fromLeft = ol < or_ && ol < ot && ol < ob;
-            boolean fromRight = or_ < ol && or_ < ot && or_ < ob;
-            if (fromTop && velocityY <= 0) {
-                bounds.y = p.y + p.height;
-                velocityY = 0;
-                jumpCount = 0;
-            } else if (fromBottom && velocityY > 0) {
-                bounds.y = p.y - bounds.height;
-                velocityY = 0;
-            } else if (fromLeft) {
-                bounds.x = p.x - bounds.width;
-                velocityX = 0;
-            } else if (fromRight) {
-                bounds.x = p.x + p.width;
-                velocityX = 0;
+            if (Gdx.input.isKeyPressed(Input.Keys.A)) {
+                physics.setVelocityX(-MOVE_SPEED);
+                facingRight = false;
+            } else if (Gdx.input.isKeyPressed(Input.Keys.D)) {
+                physics.setVelocityX(MOVE_SPEED);
+                facingRight = true;
             }
         }
 
-        // Отримання шкоди від ворогів
-        boolean touchingEnemy = false;
-        for (BaseEnemy e : enemies) {
-            if (e.isAlive() && bounds.overlaps(e.getBounds())) {
-                touchingEnemy = true;
-                if (damageCooldown <= 0f) {
-                    takeDamage(10);
-                    damageCooldown = DAMAGE_COOLDOWN;
-                }
-                break;
+        // --- Wall-slide/jump/karabkannia ---
+        boolean touchingWall = false, wallOnLeft = false, wallOnRight = false;
+        if (velY < 0f) {
+            for (Rectangle p : platforms) {
+                if (!b.overlaps(p)) continue;
+                float dxL = b.x - (p.x + p.width);
+                float dxR = p.x - (b.x + b.width);
+                if (Math.abs(dxL) < WALL_THRESHOLD) touchingWall = wallOnLeft = true;
+                if (Math.abs(dxR) < WALL_THRESHOLD) touchingWall = wallOnRight = true;
             }
         }
-        if (!touchingEnemy) damageCooldown = 0f;
+        boolean sliding = touchingWall && velY < 0f;
+        boolean justWallJumped = false;
 
-        // Обмеження в межах світу
-        bounds.x = MathUtils.clamp(bounds.x, 0f, worldWidth - bounds.width);
-        bounds.y = Math.min(bounds.y, worldHeight - bounds.height);
+        Rectangle headProbe = new Rectangle(b.x, b.y + b.height, b.width, 2f);
+        boolean ceilingAbove = platforms.stream().anyMatch(p -> headProbe.overlaps(p));
+
+        if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
+            if (sliding) {
+                physics.setVelocityY(JUMP_SPEED + WALL_JUMP_UP);
+                jumpCount = MAX_JUMPS;
+                physics.setVelocityX(wallOnRight ? -WALL_JUMP_PUSH : WALL_JUMP_PUSH);
+                facingRight = !wallOnRight;
+                justWallJumped = true;
+            } else if (jumpCount < MAX_JUMPS && !ceilingAbove) {
+                physics.setVelocityY(JUMP_SPEED);
+                jumpCount++;
+            }
+        }
+        if (physics.getVelocityY() == 0f) jumpCount = 0;
+
+        if (sliding && !justWallJumped) {
+            boolean holdWallKey = (wallOnLeft && Gdx.input.isKeyPressed(Input.Keys.A)) ||
+                (wallOnRight && Gdx.input.isKeyPressed(Input.Keys.D));
+            if (holdWallKey) {
+                if (Gdx.input.isKeyPressed(Input.Keys.UP)) physics.startClimbing(100f);
+                else                                      physics.startClimbing(0f);
+            } else {
+                physics.stopClimbing();
+            }
+        } else {
+            physics.stopClimbing();
+        }
+
+        // --- Physics Update ---
+        physics.tryStepUp(platforms, physics.getVelocityX() >= 0f);
+        physics.update(delta, platforms);
+
+// --- Attack trigger ---
+        if (Gdx.input.isKeyJustPressed(Input.Keys.J)) {
+            float pivotX = b.x + b.width/2f;
+            float pivotY = b.y + (currentWeapon instanceof SpearWeapon
+                ? b.height/2f
+                : b.height * 0.7f);
+            currentWeapon.startAttack(pivotX, pivotY, facingRight);
+        }
+
+// --- Weapon update & damage ---
+        float pivotX = b.x + b.width/2f;
+        float pivotY = b.y + (currentWeapon instanceof SpearWeapon
+            ? b.height/2f
+            : b.height * 0.7f);
+        currentWeapon.update(delta, pivotX, pivotY, facingRight);
+        currentWeapon.applyDamage(enemies);
+
+
+        // --- World bounds ---
+        b.x = MathUtils.clamp(b.x, 0f, worldWidth - b.width);
+        b.y = Math.min(b.y, worldHeight - b.height);
     }
 
-    /** Малює гравця */
     public void render(SpriteBatch batch) {
         if (!isAlive) return;
-        if (facingRight) {
-            batch.draw(texture, bounds.x, bounds.y, bounds.width, bounds.height);
-        } else {
-            batch.draw(texture, bounds.x + bounds.width, bounds.y, -bounds.width, bounds.height);
+        Rectangle b = physics.getBounds();
+        if (facingRight) batch.draw(texture, b.x, b.y, b.width, b.height);
+        else             batch.draw(texture, b.x + b.width, b.y, -b.width, b.height);
+    }
+
+    public void renderHitbox(ShapeRenderer r) {
+        // body hitbox - red
+        r.setColor(1f, 0f, 0f, 1f);
+        Rectangle b = physics.getBounds();
+        r.rect(b.x, b.y, b.width, b.height);
+        // weapon hitbox - green
+        Rectangle hb = currentWeapon.getHitbox();
+        if (hb != null) {
+            r.setColor(0f, 1f, 0f, 1f);
+            r.rect(hb.x, hb.y, hb.width, hb.height);
         }
     }
 
-    /** Малює хитбокс (для дебагу) */
-    public void renderHitbox(ShapeRenderer r) {
-        r.setColor(1, 0, 0, 1);
-        r.rect(bounds.x, bounds.y, bounds.width, bounds.height);
-    }
+    // Getters & utility
+    public boolean     isAlive()        { return isAlive; }
+    public int         getHealth()      { return health; }
+    public int         getMaxHealth()   { return maxHealth; }
+    public int         getCoins()       { return coins; }
+    public Rectangle   getBounds()      { return physics.getBounds(); }
 
-    // Геттери / ігрова взаємодія
-    public boolean isAlive() { return isAlive; }
-    public int getCoins() { return coins; }
-    public void addCoin() { coins++; }
-    public int getHealth() { return health; }
-    public int getMaxHealth() { return maxHealth; }
-
-    /** Застосування шкоди */
+    public void addCoin()  { coins++; }
     public void takeDamage(int dmg) {
         if (!isAlive) return;
         health -= dmg;
-        if (health <= 0) {
-            health = 0;
-            isAlive = false;
-        }
+        if (health <= 0) isAlive = false;
     }
 
-    /** Відродження гравця */
     public void respawn(float x, float y) {
-        bounds.x = x;
-        bounds.y = y;
-        health = maxHealth;
-        isAlive = true;
-        velocityY = 0f;
+        Rectangle b = physics.getBounds();
+        b.x = x; b.y = y;
+        health = maxHealth; isAlive = true;
+        physics.setVelocityY(0f);
         jumpCount = 0;
     }
 
-    public Rectangle getBounds() { return bounds; }
-
-    /** Вивільнення ресурсів */
     public void dispose() {
         texture.dispose();
     }

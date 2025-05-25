@@ -47,14 +47,10 @@ public class SaveData {
         collectedItems.clear();
         purchasedItems.clear();
     }
-
     public void resetCollectedItems() {
         collectedItems.clear();
     }
-
     public void resetCoins() {
         coins = 0;
     }
-
-
 }
