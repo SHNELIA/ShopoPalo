@@ -139,7 +139,7 @@
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 </data>
  </layer>
- <objectgroup id="5" name="PlayerSpawn">
+ <objectgroup id="5" name="Spawn">
   <object id="1" name="PlayerSpawn" type="spawn" x="102.667" y="714.667" width="116" height="152">
    <properties>
     <property name="facing" value="right"/>
