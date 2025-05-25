@@ -45,7 +45,7 @@ public class SwordWeapon implements Weapon {
 
     /** default values */
     public SwordWeapon() {
-        this(0.3f, 0.6f, 20);
+        this(0.35f, 0.7f, 20);
     }
 
     @Override
@@ -76,25 +76,25 @@ public class SwordWeapon implements Weapon {
         cooldownTimer = Math.max(0f, cooldownTimer - delta);
 
         if (timer > 0f) {
-            // compute sweep progress 0→1
+            // прогрес від 0 до 1
             float t = 1f - (timer / duration);
-            // angle in degrees around pivot
-            float a = START_ANGLE + SWEEP_DELTA * t;
-            // if facing left, mirror horizontally:
-            if (!facingRight) a = 180f - a;
-            float rad = a * MathUtils.degRad;
+            // обчислюємо кут слеша
+            float angle = START_ANGLE + SWEEP_DELTA * t;
+            // дзеркалимо, якщо дивимося вліво
+            if (!facingRight) angle = 180f - angle;
+            float rad = angle * MathUtils.degRad;
 
-            // place a square of size SIZE at the tip:
+            // розташовуємо квадрат hitbox на відстані RADIUS
             float cx = pivotX + MathUtils.cos(rad) * RADIUS;
             float cy = pivotY + MathUtils.sin(rad) * RADIUS;
             hitbox.set(
-                cx - SIZE/1f,
-                cy - SIZE/3f,
+                cx - SIZE/2f,
+                cy - SIZE/2f,
                 SIZE, SIZE
             );
         } else {
-            // no longer attacking
-            hitbox.set(0,0,0,0);
+            // завершили атаку — ховаємо hitbox
+            hitbox.set(0, 0, 0, 0);
         }
     }
 
@@ -134,13 +134,11 @@ public class SwordWeapon implements Weapon {
      */
     public void renderTrajectory(ShapeRenderer r) {
         if (timer <= 0f) return;
-        r.setColor(1f,1f,0f,1f);
-        // arc(centerX, centerY, radius, startDeg, sweepDeg)
+        r.setColor(1f, 1f, 0f, 1f);
         if (facingRight) {
             r.arc(pivotX, pivotY, RADIUS, START_ANGLE, SWEEP_DELTA);
         } else {
-            // mirrored: start at 90→225 becomes (180−90)=90 → (180−(90+−135))=225
-            r.arc(pivotX, pivotY, RADIUS, 180f-START_ANGLE, -SWEEP_DELTA);
+            r.arc(pivotX, pivotY, RADIUS, START_ANGLE, -SWEEP_DELTA);
         }
     }
 }
