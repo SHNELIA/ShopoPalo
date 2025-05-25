@@ -8,47 +8,50 @@ import java.util.List;
 
 /**
  * Інтерфейс для зброї: описує базові операції оновлення,
- * отримання хітбоксу та нанесення шкоди ворогам чи гравцю.
+ * старту атаки, отримання хітбоксу та нанесення шкоди.
  */
 public interface Weapon {
 
     /**
-     * Оновити стан зброї (таймери атаки й кулдауну),
-     * а також перерахувати хітбокс навколо переданої точки pivot.
+     * Почати атаку: встановити внутрішні лічильники,
+     * побудувати початковий hitbox і запам’ятати pivot/facing.
      *
-     * @param delta        час кадру в секундах
-     * @param pivotX       X-координата точки кріплення хітбоксу
-     * @param pivotY       Y-координата точки кріплення хітбоксу
-     * @param facingRight  напрям обличчям (щоб хітбокс зміщувався ліворуч/праворуч)
+     * @param pivotX      X-координата початку удару
+     * @param pivotY      Y-координата початку удару
+     * @param facingRight напрям лицем, щоб правильно розгорнути hitbox
+     */
+    void startAttack(float pivotX, float pivotY, boolean facingRight);
+
+    /**
+     * Оновити внутрішні таймери атаки та кулдауну,
+     * а також перемістити hitbox відповідно до нового pivot/facing.
+     *
+     * @param delta       час кадру в секундах
+     * @param pivotX      X-координата кріплення
+     * @param pivotY      Y-координата кріплення
+     * @param facingRight напрям лицем
      */
     void update(float delta, float pivotX, float pivotY, boolean facingRight);
 
     /**
-     * Повернути поточний хітбокс атаки, якщо атака активна,
-     * або null, якщо меч не в стані завдавати шкоду.
+     * Повернути поточний hitbox атаки, якщо вона активна (timer>0),
+     * або null, якщо удар закінчився або ще не стартував.
      */
     Rectangle getHitbox();
 
     /**
-     * Нанести шкоду всім ворогам із переданого списку,
-     * що перебувають у хітбоксі.
+     * Нанести шкоду списку ворогів, що попадуться в hitbox.
      *
-     * @param enemies  список ворогів для перевірки
+     * @param enemies список ворогів для перевірки
      */
     void applyDamage(List<BaseEnemy> enemies);
 
     /**
-     * Нанести шкоду гравцю, якщо він перебуває в хітбоксі атаки.
+     * Нанести шкоду гравцю (користується у ворогів).
      *
-     * @param player  екземпляр гравця
+     * @param player гравець, який може потрапити в hitbox
      */
     void applyDamage(Player player);
-
-    /**
-     * Почати атаку:
-     * @param pivotX X-координата, навколо якої будується hitbox
-     * @param pivotY Y-координата, навколо якої будується hitbox
-     * @param facingRight напрям лицем для зміщення вперед/назад
-     */
-    void startAttack(float pivotX, float pivotY, boolean facingRight);
+    float getCooldownRemaining();
 }
+

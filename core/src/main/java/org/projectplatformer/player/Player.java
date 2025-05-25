@@ -184,6 +184,15 @@ public class Player {
         physics.tryStepUp(platforms, physics.getVelocityX() >= 0f);
         physics.update(delta, platforms);
 
+        if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_1)) {
+            currentWeapon = new SwordWeapon();
+        }
+
+        if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_2)) {
+            currentWeapon = new SpearWeapon();
+        }
+
+
 // --- Attack trigger ---
         if (Gdx.input.isKeyJustPressed(Input.Keys.J)) {
             float pivotX = b.x + b.width/2f;

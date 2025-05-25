@@ -1,6 +1,7 @@
 package org.projectplatformer.weapon;
 
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Rectangle;
 import org.projectplatformer.enemy.BaseEnemy;
 import org.projectplatformer.player.Player;
@@ -18,99 +19,128 @@ public class SwordWeapon implements Weapon {
 
     private float timer         = 0f;
     private float cooldownTimer = 0f;
+
+    // this is the little square that actually deals damage
     private final Rectangle hitbox = new Rectangle();
 
-    // Останні дані для побудови хітбоксу та дуги
+    // pivot + facing, stored so we can both update hitbox and render the arc
     private float   pivotX, pivotY;
     private boolean facingRight;
 
-    /** Конструктор з параметрами атаки */
+    // ensure we only damage once per swing
+    private boolean damageDone;
+
+    // sweep parameters:
+    private static final float START_ANGLE =  90f;
+    private static final float SWEEP_DELTA = -135f;   // from 90° down to -45°
+    private static final float RADIUS      =  40f;   // length of the swing
+    private static final float SIZE        =  20f;   // square hitbox size
+
+    /** full‐args ctor */
     public SwordWeapon(float duration, float cooldown, int damage) {
         this.duration = duration;
         this.cooldown = cooldown;
         this.damage   = damage;
     }
 
-    /** Конструктор за замовчуванням */
+    /** default values */
     public SwordWeapon() {
-        this(0.2f, 0.5f, 25);
+        this(0.3f, 0.6f, 20);
     }
 
-    /**
-     * Запустити атаку: ініціалізувати таймери й хітбокс,
-     * зберегти останню точку pivot для дуги.
-     */
     @Override
     public void startAttack(float pivotX, float pivotY, boolean facingRight) {
         if (cooldownTimer > 0f) return;
+
+        // reset timers & state
         this.timer         = duration;
         this.cooldownTimer = cooldown;
         this.pivotX        = pivotX;
         this.pivotY        = pivotY;
         this.facingRight   = facingRight;
-        // встановлюємо початковий hitbox
-        float w = 40f, h = 10f;
-        float x = facingRight ? pivotX : pivotX - w;
-        float y = pivotY - h/2f;
-        hitbox.set(x, y, w, h);
+        this.damageDone    = false;
+
+        // initialize hitbox off‐screen until first update()
+        hitbox.set(0,0,0,0);
     }
 
-    /**
-     * Оновлює таймери та, якщо атака активна,
-     * пересуває hitbox у нове положення.
-     */
     @Override
     public void update(float delta, float pivotX, float pivotY, boolean facingRight) {
-        // зберігаємо для дуги
+        // save for both hitbox recompute and arc rendering
         this.pivotX      = pivotX;
         this.pivotY      = pivotY;
         this.facingRight = facingRight;
 
+        // tick timers
         timer         = Math.max(0f, timer - delta);
         cooldownTimer = Math.max(0f, cooldownTimer - delta);
 
         if (timer > 0f) {
-            float w = hitbox.width, h = hitbox.height;
-            float x = facingRight ? pivotX : pivotX - w;
-            float y = pivotY - h/2f;
-            hitbox.set(x, y, w, h);
+            // compute sweep progress 0→1
+            float t = 1f - (timer / duration);
+            // angle in degrees around pivot
+            float a = START_ANGLE + SWEEP_DELTA * t;
+            // if facing left, mirror horizontally:
+            if (!facingRight) a = 180f - a;
+            float rad = a * MathUtils.degRad;
+
+            // place a square of size SIZE at the tip:
+            float cx = pivotX + MathUtils.cos(rad) * RADIUS;
+            float cy = pivotY + MathUtils.sin(rad) * RADIUS;
+            hitbox.set(
+                cx - SIZE/1f,
+                cy - SIZE/3f,
+                SIZE, SIZE
+            );
+        } else {
+            // no longer attacking
+            hitbox.set(0,0,0,0);
         }
     }
 
-    /** Повертає хітбокс атаки або null, якщо атака неактивна. */
     @Override
     public Rectangle getHitbox() {
         return timer > 0f ? hitbox : null;
     }
 
-    /** Наносить шкоду всім ворогам у списку, які в hitbox. */
     @Override
     public void applyDamage(List<BaseEnemy> enemies) {
-        if (timer <= 0f) return;
+        if (timer <= 0f || damageDone) return;
         for (BaseEnemy e : enemies) {
             if (e.isAlive() && hitbox.overlaps(e.getBounds())) {
                 e.takeDamage(damage);
+                damageDone = true;
+                break;
             }
         }
     }
 
-    /** Наносить шкоду гравцю, якщо він у hitbox (для ворога). */
     @Override
     public void applyDamage(Player player) {
-        if (timer > 0f && hitbox.overlaps(player.getBounds())) {
+        if (timer <= 0f || damageDone) return;
+        if (hitbox.overlaps(player.getBounds())) {
             player.takeDamage(damage);
+            damageDone = true;
         }
     }
 
+    @Override
+    public float getCooldownRemaining() {
+        return cooldownTimer;
+    }
+
     /**
-     * Малює траєкторію удару — півколо від 90° до -45°
-     * навколо точки (pivotX, pivotY), радіус = ширина hitbox.
+     * Draws the debug arc from 90°→−45° around the pivot.
      */
     public void renderTrajectory(ShapeRenderer r) {
         if (timer <= 0f) return;
-        float radius = hitbox.width;
-        r.setColor(1f, 1f, 0f, 1f);
-        // arc(центрX, центрY, радіус, початковий кут, кутовий пробіг)
-        r.arc(pivotX, pivotY, radius, 90f, -135f);
+        r.setColor(1f,1f,0f,1f);
+        // arc(centerX, centerY, radius, startDeg, sweepDeg)
+        if (facingRight) {
+            r.arc(pivotX, pivotY, RADIUS, START_ANGLE, SWEEP_DELTA);
+        } else {
+            // mirrored: start at 90→225 becomes (180−90)=90 → (180−(90+−135))=225
+            r.arc(pivotX, pivotY, RADIUS, 180f-START_ANGLE, -SWEEP_DELTA);
+        }
     }
 }
