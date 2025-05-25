@@ -45,3 +45,4 @@ public class Item extends GameObject {
         return "item_" + (int)x + "_" + (int)y;
     }
 }
+

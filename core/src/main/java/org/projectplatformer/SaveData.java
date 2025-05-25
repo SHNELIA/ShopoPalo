@@ -54,3 +54,4 @@ public class SaveData {
         coins = 0;
     }
 }
+

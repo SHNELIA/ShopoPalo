@@ -18,3 +18,4 @@ public class Platform extends GameObject {
         // нічого не малюємо, бо візуал дає TiledMapRenderer
     }
 }
+

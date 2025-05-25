@@ -41,3 +41,4 @@ public abstract class Level {
     /** Звільнення ресурсів (наприклад, текстур, мап тощо) */
     public abstract void dispose();
 }
+

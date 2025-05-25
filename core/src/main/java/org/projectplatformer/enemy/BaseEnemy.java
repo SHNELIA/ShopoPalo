@@ -106,3 +106,4 @@ public abstract class BaseEnemy {
 
     public void dispose() {}
 }
+

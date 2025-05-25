@@ -118,3 +118,4 @@ public class PhysicsComponent {
     public float getVelocityY() { return velY; }
     public Rectangle getBounds() { return bounds; }
 }
+
