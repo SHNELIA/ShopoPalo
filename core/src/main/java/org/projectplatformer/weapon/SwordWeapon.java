@@ -141,4 +141,8 @@ public class SwordWeapon implements Weapon {
             r.arc(pivotX, pivotY, RADIUS, START_ANGLE, -SWEEP_DELTA);
         }
     }
+
+    public boolean isAttacking() {
+        return false;
+    }
 }

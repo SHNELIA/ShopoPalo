@@ -18,8 +18,6 @@ import org.projectplatformer.objectslogic.Item;
 import org.projectplatformer.enemy.Goblin;
 import org.projectplatformer.enemy.Spider;
 
-import java.util.List;
-
 public class TiledLevel extends Level {
     private final TiledMap map;
     private final OrthogonalTiledMapRenderer renderer;
@@ -30,13 +28,13 @@ public class TiledLevel extends Level {
         this.renderer = new OrthogonalTiledMapRenderer(map, 1f, batch);
         defaultTex    = am.get("Levels/Images/default.png", Texture.class);
         coinTex       = am.get("Levels/Images/coin.png", Texture.class);
-        goblinTex     = am.get("Levels/Images/goblin.png", Texture.class);
-        spiderTex     = am.get("Levels/Images/spider.png", Texture.class);
+        goblinTex     = am.get("Enemies/Goblin/Walk/Goblin1.png", Texture.class);
+        spiderTex     = am.get("Enemies/Spider/Walk/Spider1.png", Texture.class);
     }
 
     @Override
     public void createLevel(World world) {
-        // 1) Шукаємо шар "Spawn" і в ньому об’єкт "PlayerSpawn"
+        // 1) Пошук об'єкту PlayerSpawn на шарі "Spawn"
         RectangleMapObject spawnObj = null;
         MapLayer spawnLayer = map.getLayers().get("Spawn");
         if (spawnLayer != null) {
@@ -47,7 +45,8 @@ public class TiledLevel extends Level {
                 }
             }
         }
-        // 1.а) Якщо не знайдено, шукаємо PlayerSpawn у всіх шарах
+
+        // 1.a) Якщо не знайдено, шукаємо у всіх шарах
         if (spawnObj == null) {
             for (MapLayer layer : map.getLayers()) {
                 for (MapObject obj : layer.getObjects().getByType(RectangleMapObject.class)) {
@@ -59,7 +58,8 @@ public class TiledLevel extends Level {
                 if (spawnObj != null) break;
             }
         }
-        // 1.б) Якщо досі нема — дефолтна позиція + попередження
+
+        // 1.b) Якщо і досі немає — дефолтна позиція (0,0) та попередження
         if (spawnObj != null) {
             Rectangle rs = spawnObj.getRectangle();
             startX = rs.x;
@@ -67,13 +67,11 @@ public class TiledLevel extends Level {
         } else {
             startX = 0;
             startY = 0;
-            System.err.println(
-                "Warning: у карті не знайдено PlayerSpawn → стартова точка (0,0)");
+            System.err.println("Warning: у карті не знайдено PlayerSpawn → стартова точка (0,0)");
         }
 
-        // 2) Платформи зі шару "ground"
-        TiledMapTileLayer groundLayer =
-            (TiledMapTileLayer)map.getLayers().get("ground");
+        // 2) Створення платформ із шару "ground"
+        TiledMapTileLayer groundLayer = (TiledMapTileLayer)map.getLayers().get("ground");
         if (groundLayer != null) {
             float tileW = groundLayer.getTileWidth();
             float tileH = groundLayer.getTileHeight();
@@ -90,25 +88,24 @@ public class TiledLevel extends Level {
             }
         }
 
-        // 3) Монети зі шару "Coins"
+        // 3) Додавання монет із шару "Coins"
         MapLayer coinsLayer = map.getLayers().get("Coins");
         if (coinsLayer != null) {
-            for (MapObject obj : coinsLayer.getObjects()
-                .getByType(RectangleMapObject.class)) {
+            for (MapObject obj : coinsLayer.getObjects().getByType(RectangleMapObject.class)) {
                 Rectangle r = ((RectangleMapObject)obj).getRectangle();
                 world.addObject(new Item(r.x, r.y, coinTex));
             }
         }
 
-        // 4) Вороги зі шару "Enemies"
+        // 4) Додавання ворогів із шару "Enemies"
         MapLayer enemiesLayer = map.getLayers().get("Enemies");
         if (enemiesLayer != null) {
-            for (MapObject obj : enemiesLayer.getObjects()
-                .getByType(RectangleMapObject.class)) {
+            for (MapObject obj : enemiesLayer.getObjects().getByType(RectangleMapObject.class)) {
                 Rectangle r = ((RectangleMapObject)obj).getRectangle();
                 String type = obj.getProperties().get("type", String.class);
                 if ("Goblin".equals(type)) {
-                    world.addEnemy(new Goblin(r.x, r.y, goblinTex));
+                    world.addEnemy(new Goblin(r.x, r.y));
+
                 } else if ("Spider".equals(type)) {
                     world.addEnemy(new Spider(r.x, r.y, spiderTex));
                 }
@@ -123,14 +120,12 @@ public class TiledLevel extends Level {
 
     public float getMapPixelWidth() {
         MapProperties props = map.getProperties();
-        return props.get("width", Integer.class)
-            * props.get("tilewidth", Integer.class);
+        return props.get("width", Integer.class) * props.get("tilewidth", Integer.class);
     }
 
     public float getMapPixelHeight() {
         MapProperties props = map.getProperties();
-        return props.get("height", Integer.class)
-            * props.get("tileheight", Integer.class);
+        return props.get("height", Integer.class) * props.get("tileheight", Integer.class);
     }
 
     @Override
@@ -139,4 +134,3 @@ public class TiledLevel extends Level {
         map.dispose();
     }
 }
-
