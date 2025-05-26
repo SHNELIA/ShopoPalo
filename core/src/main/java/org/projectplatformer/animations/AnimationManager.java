@@ -27,14 +27,15 @@ public class AnimationManager {
     public AnimationManager() {
         String base = "Player/";
 
-        animations.put(State.IDLE, loadAnimation(base + "Idle", 0.15f, true));
-        animations.put(State.WALK, loadAnimation(base + "Walk", 0.10f, true));
-        animations.put(State.JUMP, loadAnimation(base + "Jump", 0.1f, false));
-        animations.put(State.ATTACKSWORD, loadAnimation(base + "Sword attack", 0.8f, false));
-        animations.put(State.ATTACKSPEAR, loadAnimation(base + "Spear attack", 0.8f, false));
-        animations.put(State.DEFEAT, loadAnimation(base + "Defeat", 0.1f, false));
-        animations.put(State.SLIDING, loadAnimation(base + "Wall climbing", 0.6f, false));
-        animations.put(State.COINCOLLECT, loadAnimation(base + "Coin collected", 0.1f, false));
+        animations.put(State.IDLE,         loadAnimation(base + "Idle",         0.15f, true));
+        animations.put(State.WALK,         loadAnimation(base + "Walk",         0.15f, true));
+        animations.put(State.JUMP,         loadAnimation(base + "Jump",         0.15f,  false));
+        animations.put(State.ATTACKSWORD,  loadAnimation(base + "Sword attack", 0.06f, false));
+        animations.put(State.ATTACKSPEAR,  loadAnimation(base + "Spear attack", 0.1f,  false));
+        animations.put(State.ATTACKBOW,    loadAnimation(base + "Bow attack",   0.12f, false));
+        animations.put(State.DEFEAT,       loadAnimation(base + "Defeat",       0.1f,  false));
+        animations.put(State.SLIDING,      loadAnimation(base + "Wall climbing",0.6f,  false));
+        animations.put(State.COINCOLLECT,  loadAnimation(base + "Coin collected",0.15f, false));
 
         // Ensure all possible states are accounted for
         for (State state : State.values()) {
@@ -65,6 +66,10 @@ public class AnimationManager {
         return new Animation<>(frameDuration, frames, loop ? Animation.PlayMode.LOOP : Animation.PlayMode.NORMAL);
     }
 
+    /**
+     * Оновити стан анімації.
+     * Якщо змінюється state — stateTime обнуляється!
+     */
     public void update(float delta, State newState, boolean facingRight) {
         if (animations.containsKey(newState)) {
             if (newState != currentState) {
@@ -74,17 +79,24 @@ public class AnimationManager {
                 stateTime += delta;
             }
             this.facingRight = facingRight;
-        } else {
-            Gdx.app.error("AnimationManager", "Invalid state transition: No animation for state: " + newState);
         }
     }
 
     /**
-     * Повертає поточний кадр анімації (копію),
-     * яка вже правильно відзеркалена залежно від facingRight.
+     * Примусово задати стан анімації та обнулити таймер (наприклад для атаки з queue).
+     */
+    public void forceState(State newState, boolean facingRight) {
+        if (animations.containsKey(newState)) {
+            currentState = newState;
+            stateTime = 0f;
+            this.facingRight = facingRight;
+        }
+    }
+
+    /**
+     * Поточний кадр анімації (копія, з фліпом якщо треба).
      */
     public TextureRegion getCurrentFrame() {
-        // 1. Дістаємо анімацію за currentState
         Animation<TextureRegion> animation = animations.get(currentState);
         if (animation == null) {
             Gdx.app.error("AnimationManager", "No animation for state: " + currentState);
@@ -93,22 +105,26 @@ public class AnimationManager {
                 throw new IllegalStateException("Default (IDLE) animation missing!");
             }
         }
+        boolean looping = animation.getPlayMode() == Animation.PlayMode.LOOP;
+        TextureRegion original = animation.getKeyFrame(stateTime, looping);
 
-        // 2. Оригінальний кадр із анімації
-        TextureRegion original = animation.getKeyFrame(stateTime, true);
-
-        // 3. Копіюємо його, щоби не міняти оригінал
         TextureRegion region = new TextureRegion(original);
-
-        // 4. Явно встановлюємо відзеркалення по X:
-        //    якщо facingRight==false, region має бути відзеркаленим.
         boolean shouldFlip = !facingRight;
-        // якщо стан фліпу не відповідає бажаному — фліпнемо
         if (region.isFlipX() != shouldFlip) {
             region.flip(true, false);
         }
-
         return region;
+    }
+
+    public State getCurrentState() {
+        return currentState;
+    }
+    public float getStateTime() {
+        return stateTime;
+    }
+    public boolean isAnimationFinished(State state) {
+        Animation<TextureRegion> anim = animations.get(state);
+        return anim != null && anim.isAnimationFinished(stateTime);
     }
 
     public void dispose() {
