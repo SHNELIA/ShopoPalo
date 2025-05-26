@@ -1,5 +1,6 @@
 package org.projectplatformer.EnemiesAnimation;
 
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
@@ -27,14 +28,19 @@ public class SkeletonAnimationManager implements Disposable {
         stateTime = 0f;
         currentState = State.WALK;
 
-        frames = new Texture[6];
-        for (int i = 1; i < 16; i++) {
-            frames[i] = new Texture("Enemies/Skeleton" + (i + 1) + ".png");
+        // Завантажуємо 16 кадрів з папки Enemies/Skeleton/
+        frames = new Texture[16];
+        for (int i = 0; i < 16; i++) {
+            String path = "Enemies/Skeleton/Skeleton" + (i + 1) + ".png";
+            if (!Gdx.files.internal(path).exists()) {
+                throw new RuntimeException("❌ Missing file: " + path);
+            }
+            frames[i] = new Texture(path);
         }
 
-        walkAnim = createAnimation(1, 6, 0.15f);
-        attackAnim = createAnimation(14, 16, 0.12f);
-        deathAnim = createAnimation(6, 13, 0.25f);
+        walkAnim   = createAnimation(0, 6, 0.15f);  // Skeleton1-6.png
+        deathAnim  = createAnimation(6, 13, 0.25f); // Skeleton7-13.png
+        attackAnim = createAnimation(13, 16, 0.12f); // Skeleton14-16.png
     }
 
     private Animation<TextureRegion> createAnimation(int from, int to, float frameDuration) {

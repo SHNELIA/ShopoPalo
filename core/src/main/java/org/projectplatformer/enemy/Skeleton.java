@@ -36,7 +36,7 @@ public class Skeleton extends BaseEnemy {
         super(
             x, y,
             32f, 48f,
-            null,            // texture — не потрібен
+            null,
             50,
             -2000f,
             -1000f,
@@ -64,7 +64,6 @@ public class Skeleton extends BaseEnemy {
         slashWeapon.update(delta, pivotX, pivotY, facingRight);
 
         float playerCX = player.getBounds().x + player.getBounds().width / 2f;
-
         float dx = playerCX - pivotX;
         boolean isInAttackRange = dx * dx <= MELEE_RANGE * MELEE_RANGE;
         boolean canAttack = slashWeapon.getCooldownRemaining() <= 0f;
@@ -82,18 +81,22 @@ public class Skeleton extends BaseEnemy {
 
         animationManager.update(delta, currentState, facingRight);
 
-        if (isInAttackRange && canAttack) {
+        if (isInAttackRange && canAttack && isAlive()) {
             slashWeapon.startAttack(pivotX, pivotY, facingRight);
         }
-        slashWeapon.applyDamage(player);
+
+        if (isAlive()) {
+            slashWeapon.applyDamage(player);
+        }
 
         super.update(delta, player, platforms);
     }
 
     @Override
     protected void aiMove(float delta, Player player, List<Rectangle> platforms) {
-        Rectangle b = getBounds();
+        if (!isAlive()) return;
 
+        Rectangle b = getBounds();
         float belowX = b.x + b.width / 2f;
         boolean hasGround = false;
         for (Rectangle p : platforms) {
@@ -170,16 +173,13 @@ public class Skeleton extends BaseEnemy {
 
     @Override
     public void render(SpriteBatch batch) {
-        if (!isAlive()) return;
         Rectangle b = getBounds();
         TextureRegion frame = animationManager.getCurrentFrame();
 
         if (facingRight) {
             batch.draw(frame, b.x, b.y, b.width, b.height);
         } else {
-            batch.draw(frame,
-                b.x + b.width, b.y,
-                -b.width, b.height);
+            batch.draw(frame, b.x + b.width, b.y, -b.width, b.height);
         }
     }
 
