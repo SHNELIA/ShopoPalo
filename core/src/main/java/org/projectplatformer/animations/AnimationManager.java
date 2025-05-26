@@ -16,7 +16,7 @@ public class AnimationManager {
     public enum State {
         IDLE, WALK, JUMP,
         ATTACKSWORD, ATTACKSPEAR, ATTACKBOW,
-        DEFEAT, CLIMBING, COINCOLLECTION
+        DEFEAT, SLIDING, COINCOLLECT
     }
 
     private final Map<State, Animation<TextureRegion>> animations = new HashMap<>();
@@ -33,6 +33,8 @@ public class AnimationManager {
         animations.put(State.ATTACKSWORD, loadAnimation(base + "Sword attack", 0.8f, false));
         animations.put(State.ATTACKSPEAR, loadAnimation(base + "Spear attack", 0.8f, false));
         animations.put(State.DEFEAT, loadAnimation(base + "Defeat", 0.1f, false));
+        animations.put(State.SLIDING, loadAnimation(base + "Wall climbing", 0.6f, false));
+        animations.put(State.COINCOLLECT, loadAnimation(base + "Coin collected", 0.1f, false));
 
         // Ensure all possible states are accounted for
         for (State state : State.values()) {

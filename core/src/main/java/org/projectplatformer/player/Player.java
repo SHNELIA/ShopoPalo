@@ -65,6 +65,11 @@ public class Player {
     private float damageCooldown = 0f;
     private static final float DAMAGE_COOLDOWN = 1f;
 
+    // Збір монетки
+    private boolean coinCollect = false;
+    private float collectTimer = 0f;
+    private static final float COINCOLLECT_DURATION = 0.3f;
+
     // Інші стани
     private boolean facingRight = true;
     private boolean isAlive = true;
@@ -85,7 +90,7 @@ public class Player {
             0.9f,    // drag
             16f,     // maxStepHeight
             200f     // stepUpSpeed
-          
+
         );
         animationManager = new AnimationManager();
         currentWeapon = new SwordWeapon();
@@ -184,6 +189,12 @@ public class Player {
             physics.stopClimbing();
         }
 
+        // Збір монетки
+        if (coinCollect) {
+            collectTimer -= delta;
+            if (collectTimer <= 0f) coinCollect = false;
+        }
+
         // --- Physics Update ---
         physics.tryStepUp(platforms, physics.getVelocityX() >= 0f);
         physics.update(delta, platforms);
@@ -264,7 +275,11 @@ public class Player {
 
         // --- Визначаємо найвищий пріоритет стан анімації ---
         State newState;
-        if (attacking) {
+        if (coinCollect) {
+            newState = State.COINCOLLECT; // <-- Ось ця гілка
+        } else if (sliding) {
+                newState = State.SLIDING;
+        } else if (attacking) {
             newState = currentWeapon instanceof SpearWeapon
                 ? State.ATTACKSPEAR
                 : State.ATTACKSWORD;
@@ -325,6 +340,11 @@ public class Player {
         health = maxHealth; isAlive = true;
         physics.setVelocityY(0f);
         jumpCount = 0;
+    }
+
+    public void coinCollectAnimation() {
+        coinCollect = true;
+        collectTimer = COINCOLLECT_DURATION;
     }
 
     public void dispose() {
