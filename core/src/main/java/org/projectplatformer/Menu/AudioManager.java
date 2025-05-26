@@ -1,4 +1,3 @@
-
 package org.projectplatformer.Menu;
 
 import javax.sound.sampled.*;
