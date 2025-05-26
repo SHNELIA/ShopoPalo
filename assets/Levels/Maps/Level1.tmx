@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="120" height="30" tilewidth="32" tileheight="32" infinite="0" nextlayerid="18" nextobjectid="8">
+<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="120" height="30" tilewidth="32" tileheight="32" infinite="0" nextlayerid="18" nextobjectid="10">
  <tileset firstgid="1" source="../Tilesets/backsky.tsx"/>
  <tileset firstgid="181" source="../Tilesets/moon.tsx"/>
  <tileset firstgid="361" source="../Tilesets/forest.tsx"/>
@@ -178,9 +178,19 @@
 </data>
  </layer>
  <objectgroup id="15" name="Enemies">
-  <object id="4" x="507.333" y="830.667" width="64" height="64.6667">
+  <object id="4" x="1084.67" y="762.667" width="64" height="64.6667">
    <properties>
     <property name="type" value="Goblin"/>
+   </properties>
+  </object>
+  <object id="8" name="Spider" type="Spider" x="522" y="836.667" width="67.3333" height="56.6667">
+   <properties>
+    <property name="type" value="Spider"/>
+   </properties>
+  </object>
+  <object id="9" name="Spider" type="Spider" x="488.333" y="837.667" width="67.3333" height="56.6667">
+   <properties>
+    <property name="type" value="Spider"/>
    </properties>
   </object>
  </objectgroup>
