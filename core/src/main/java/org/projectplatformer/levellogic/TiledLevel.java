@@ -1,9 +1,13 @@
 package org.projectplatformer.levellogic;
 
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.assets.AssetManager;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.graphics.g2d.Animation;
+import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.maps.MapLayer;
 import com.badlogic.gdx.maps.MapObject;
 import com.badlogic.gdx.maps.MapProperties;
@@ -12,29 +16,34 @@ import com.badlogic.gdx.maps.tiled.TiledMap;
 import com.badlogic.gdx.maps.tiled.TiledMapTileLayer;
 import com.badlogic.gdx.maps.tiled.renderers.OrthogonalTiledMapRenderer;
 import com.badlogic.gdx.math.Rectangle;
+import org.projectplatformer.enemy.Skeleton;
 import org.projectplatformer.objectslogic.World;
 import org.projectplatformer.objectslogic.Platform;
 import org.projectplatformer.objectslogic.Item;
 import org.projectplatformer.enemy.Goblin;
 import org.projectplatformer.enemy.Spider;
+import org.projectplatformer.objectslogic.Coin;
+
+import java.util.List;
 
 public class TiledLevel extends Level {
     private final TiledMap map;
     private final OrthogonalTiledMapRenderer renderer;
-    private final Texture defaultTex, coinTex, goblinTex, spiderTex;
+    private final Texture defaultTex, coinTex, goblinTex, spiderTex, skeletonTex;
 
     public TiledLevel(AssetManager am, SpriteBatch batch, String mapPath) {
         this.map      = am.get(mapPath, TiledMap.class);
         this.renderer = new OrthogonalTiledMapRenderer(map, 1f, batch);
         defaultTex    = am.get("Levels/Images/default.png", Texture.class);
         coinTex       = am.get("Levels/Images/coin.png", Texture.class);
-        goblinTex     = am.get("Enemies/Goblin/Walk/Goblin1.png", Texture.class);
-        spiderTex     = am.get("Enemies/Spider/Walk/Spider1.png", Texture.class);
+        goblinTex     = am.get("Levels/Images/goblin.png", Texture.class);
+        spiderTex     = am.get("Levels/Images/spider.png", Texture.class);
+        skeletonTex  = new Texture(Gdx.files.internal("Enemies/Skeleton/Skeleton1.png"));
     }
 
     @Override
     public void createLevel(World world) {
-        // 1) Пошук об'єкту PlayerSpawn на шарі "Spawn"
+        // 1) Шукаємо шар "Spawn" і в ньому об’єкт "PlayerSpawn"
         RectangleMapObject spawnObj = null;
         MapLayer spawnLayer = map.getLayers().get("Spawn");
         if (spawnLayer != null) {
@@ -45,8 +54,7 @@ public class TiledLevel extends Level {
                 }
             }
         }
-
-        // 1.a) Якщо не знайдено, шукаємо у всіх шарах
+        // 1.а) Якщо не знайдено, шукаємо PlayerSpawn у всіх шарах
         if (spawnObj == null) {
             for (MapLayer layer : map.getLayers()) {
                 for (MapObject obj : layer.getObjects().getByType(RectangleMapObject.class)) {
@@ -58,8 +66,7 @@ public class TiledLevel extends Level {
                 if (spawnObj != null) break;
             }
         }
-
-        // 1.b) Якщо і досі немає — дефолтна позиція (0,0) та попередження
+        // 1.б) Якщо досі нема — дефолтна позиція + попередження
         if (spawnObj != null) {
             Rectangle rs = spawnObj.getRectangle();
             startX = rs.x;
@@ -67,11 +74,13 @@ public class TiledLevel extends Level {
         } else {
             startX = 0;
             startY = 0;
-            System.err.println("Warning: у карті не знайдено PlayerSpawn → стартова точка (0,0)");
+            System.err.println(
+                "Warning: у карті не знайдено PlayerSpawn → стартова точка (0,0)");
         }
 
-        // 2) Створення платформ із шару "ground"
-        TiledMapTileLayer groundLayer = (TiledMapTileLayer)map.getLayers().get("ground");
+        // 2) Платформи зі шару "ground"
+        TiledMapTileLayer groundLayer =
+            (TiledMapTileLayer)map.getLayers().get("ground");
         if (groundLayer != null) {
             float tileW = groundLayer.getTileWidth();
             float tileH = groundLayer.getTileHeight();
@@ -88,26 +97,38 @@ public class TiledLevel extends Level {
             }
         }
 
-        // 3) Додавання монет із шару "Coins"
+        // 3) Монети зі шару "Coins"
         MapLayer coinsLayer = map.getLayers().get("Coins");
         if (coinsLayer != null) {
-            for (MapObject obj : coinsLayer.getObjects().getByType(RectangleMapObject.class)) {
+            for (MapObject obj : coinsLayer.getObjects()
+                .getByType(RectangleMapObject.class)) {
                 Rectangle r = ((RectangleMapObject)obj).getRectangle();
-                world.addObject(new Item(r.x, r.y, coinTex));
+
+                // --- Додаємо анімацію монетки ---
+                TextureRegion region = new TextureRegion(coinTex);
+                Array<TextureRegion> frames = new Array<>();
+                frames.add(region);
+                Animation<TextureRegion> idleAnim = new Animation<>(0.2f, frames, Animation.PlayMode.LOOP);
+                Animation<TextureRegion> collectAnim = new Animation<>(0.1f, frames, Animation.PlayMode.NORMAL);
+
+                world.addObject(new Coin(r.x, r.y, idleAnim, collectAnim));
             }
         }
 
-        // 4) Додавання ворогів із шару "Enemies"
+        // 4) Вороги зі шару "Enemies"
         MapLayer enemiesLayer = map.getLayers().get("Enemies");
         if (enemiesLayer != null) {
-            for (MapObject obj : enemiesLayer.getObjects().getByType(RectangleMapObject.class)) {
+            for (MapObject obj : enemiesLayer.getObjects()
+                .getByType(RectangleMapObject.class)) {
                 Rectangle r = ((RectangleMapObject)obj).getRectangle();
                 String type = obj.getProperties().get("type", String.class);
                 if ("Goblin".equals(type)) {
-                    world.addEnemy(new Goblin(r.x, r.y));
-
+                    world.addEnemy(new Goblin(r.x, r.y, goblinTex));
                 } else if ("Spider".equals(type)) {
                     world.addEnemy(new Spider(r.x, r.y, spiderTex));
+                }
+                else if ("Skeleton".equals(type)) {
+                    world.addEnemy(new Skeleton(r.x, r.y, skeletonTex));
                 }
             }
         }
@@ -120,12 +141,14 @@ public class TiledLevel extends Level {
 
     public float getMapPixelWidth() {
         MapProperties props = map.getProperties();
-        return props.get("width", Integer.class) * props.get("tilewidth", Integer.class);
+        return props.get("width", Integer.class)
+            * props.get("tilewidth", Integer.class);
     }
 
     public float getMapPixelHeight() {
         MapProperties props = map.getProperties();
-        return props.get("height", Integer.class) * props.get("tileheight", Integer.class);
+        return props.get("height", Integer.class)
+            * props.get("tileheight", Integer.class);
     }
 
     @Override

@@ -1,5 +1,7 @@
 package org.projectplatformer.weapon;
 
+import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Rectangle;
 import org.projectplatformer.enemy.BaseEnemy;
@@ -10,50 +12,45 @@ import java.util.Iterator;
 import java.util.List;
 
 /**
- * Лук: стріли летять по простій балістичній траєкторії.
+ * Лук: стріли летять по простій балістичній траєкторії,
+ * малюються як спрайт та зникають при попаданні у ворога чи платформу.
  */
 public class BowWeapon implements Weapon {
-    // час між пострілами
+    // --- Основні поля ---
     private final float cooldown;
     private float cooldownTimer = 0f;
-
-    // початкова швидкість стріли (px/s)
     private final float initialSpeed;
-    // кут випуску в градусах (0 — горизонтально, +90 — вгору)
     private final float launchAngleDeg;
-    // гравітація (px/s²)
     private static final float GRAVITY = 800f;
-
-    // розміри та дальність
     private final float arrowW, arrowH;
     private final float maxRange;
-
-    // шкода однієї стріли
     private final int damage;
 
-    // активні стріли
-    private final List<Projectile> arrows = new ArrayList<>();
+    // --- Платформи для перевірки колізії ---
+    private List<Rectangle> worldPlatforms = null;
+    public void setPlatforms(List<Rectangle> platforms) {
+        this.worldPlatforms = platforms;
+    }
 
+    // --- Текстура стріли ---
+    private static final Texture arrowTexture = new Texture("arrow.png");
+
+    // --- Активні стріли ---
+    private final List<Projectile> arrows = new ArrayList<>();
     private static class Projectile {
         Rectangle hitbox;
         float     vx, vy;
         float     travelled = 0f;
-        Projectile(Rectangle hb, float vx, float vy) {
+        boolean   facingRight;
+        Projectile(Rectangle hb, float vx, float vy, boolean facingRight) {
             this.hitbox = hb;
             this.vx = vx;
             this.vy = vy;
+            this.facingRight = facingRight;
         }
     }
 
-    /**
-     * @param cooldown       час між пострілами
-     * @param speed          початкова швидкість стріли (px/s)
-     * @param angleDeg       кут підйому в градусах
-     * @param w              ширина стріли
-     * @param h              висота стріли
-     * @param maxRange       ліміт пройденої відстані (px)
-     * @param damage         шкода при попаданні
-     */
+    // --- Конструктори ---
     public BowWeapon(float cooldown,
                      float speed,
                      float angleDeg,
@@ -83,35 +80,35 @@ public class BowWeapon implements Weapon {
         );
     }
 
+    // --- Для BowWeapon стріла створюється окремо! ---
     @Override
     public void startAttack(float pivotX, float pivotY, boolean facingRight) {
+        // Не використовується (стріла спавниться через releaseArrow у Player)
+    }
+
+    /** Викликається з Player у певний момент анімації */
+    public void releaseArrow(float pivotX, float pivotY, boolean facingRight) {
         if (cooldownTimer > 0f) return;
         cooldownTimer = cooldown;
 
-        // розрахунок Vx, Vy
         double ang = Math.toRadians(launchAngleDeg);
         float vx = (float)(Math.cos(ang) * initialSpeed) * (facingRight ? +1 : -1);
         float vy = (float)(Math.sin(ang) * initialSpeed);
 
-        // початковий hitbox
         float x = facingRight ? pivotX : pivotX - arrowW;
         float y = pivotY - arrowH/2f;
         Rectangle hb = new Rectangle(x, y, arrowW, arrowH);
 
-        arrows.add(new Projectile(hb, vx, vy));
+        arrows.add(new Projectile(hb, vx, vy, facingRight));
     }
 
     @Override
     public void update(float delta, float pivotX, float pivotY, boolean facingRight) {
-        // оновлюємо кулдаун
         cooldownTimer = Math.max(0f, cooldownTimer - delta);
 
-        // рухаємо всі стріли по балістичній траєкторії
         Iterator<Projectile> it = arrows.iterator();
         while (it.hasNext()) {
             Projectile p = it.next();
-
-            // інтегруємо швидкості
             p.vy -= GRAVITY * delta;
             float dx = p.vx * delta;
             float dy = p.vy * delta;
@@ -120,8 +117,18 @@ public class BowWeapon implements Weapon {
             p.hitbox.y += dy;
             p.travelled += Math.sqrt(dx*dx + dy*dy);
 
-            // знищуємо, якщо перелетіла ліміт або впала нижче екрану
-            if (p.travelled >= maxRange || p.hitbox.y + p.hitbox.height < 0) {
+            // --- ЗНИКНЕННЯ СТРІЛИ ПРИ ПОПАДАННІ В ПЛАТФОРМУ ---
+            boolean touchedPlatform = false;
+            if (worldPlatforms != null) {
+                for (Rectangle plat : worldPlatforms) {
+                    if (p.hitbox.overlaps(plat)) {
+                        touchedPlatform = true;
+                        break;
+                    }
+                }
+            }
+            // Видаляємо, якщо зіткнулась з платформою, вилетіла за межу, чи нижче екрану
+            if (touchedPlatform || p.travelled >= maxRange || p.hitbox.y + p.hitbox.height < 0) {
                 it.remove();
             }
         }
@@ -129,8 +136,7 @@ public class BowWeapon implements Weapon {
 
     @Override
     public Rectangle getHitbox() {
-        // у лука немає одного хітбоксу
-        return null;
+        return arrows.isEmpty() ? null : arrows.get(0).hitbox;
     }
 
     @Override
@@ -166,7 +172,22 @@ public class BowWeapon implements Weapon {
         return cooldownTimer;
     }
 
-    /** Дебаг-рендеринг усіх стріл */
+    /** Малює всі стріли як спрайти (SpriteBatch) */
+    public void renderProjectiles(SpriteBatch batch) {
+        for (Projectile p : arrows) {
+            float drawX = p.hitbox.x;
+            float drawY = p.hitbox.y;
+            float drawW = p.hitbox.width;
+            float drawH = p.hitbox.height;
+            if (p.facingRight) {
+                batch.draw(arrowTexture, drawX, drawY, drawW, drawH);
+            } else {
+                batch.draw(arrowTexture, drawX + drawW, drawY, -drawW, drawH);
+            }
+        }
+    }
+
+    /** Для дебагу (опційно) */
     public void renderProjectiles(ShapeRenderer r) {
         r.setColor(0f, 1f, 0f, 1f);
         for (Projectile p : arrows) {

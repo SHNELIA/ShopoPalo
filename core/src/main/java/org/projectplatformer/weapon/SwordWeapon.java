@@ -45,7 +45,7 @@ public class SwordWeapon implements Weapon {
 
     /** default values */
     public SwordWeapon() {
-        this(0.35f, 0.7f, 20);
+        this(0.35f, 0.2f, 20);
     }
 
     @Override
