@@ -44,12 +44,13 @@ dependencies {
 def os = System.properties['os.name'].toLowerCase()
 
 run {
-  workingDir = rootProject.file('assets').path
-// You can uncomment the next line if your IDE claims a build failure even when the app closed properly.
-  //setIgnoreExitValue(true)
-
-  if (os.contains('mac')) jvmArgs += "-XstartOnFirstThread"
+  workingDir = project(":lwjgl3").file("assets")
+  if (os.contains("mac")) {
+    jvmArgs += "-XstartOnFirstThread"
+  }
 }
+
+
 
 jar {
 // sets the name of the .jar file this produces to the name of the game or app, with the version after.
