@@ -45,7 +45,7 @@ public class SwordWeapon implements Weapon {
 
     /** default values */
     public SwordWeapon() {
-        this(0.35f, 0.7f, 20);
+        this(0.35f, 0.2f, 20);
     }
 
     @Override
@@ -140,5 +140,9 @@ public class SwordWeapon implements Weapon {
         } else {
             r.arc(pivotX, pivotY, RADIUS, START_ANGLE, -SWEEP_DELTA);
         }
+    }
+
+    public boolean isAttacking() {
+        return false;
     }
 }

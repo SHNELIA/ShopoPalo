@@ -24,7 +24,6 @@ import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
-
 import org.projectplatformer.levellogic.TiledLevel;
 import org.projectplatformer.objectslogic.GameObject;
 import org.projectplatformer.objectslogic.Item;
@@ -32,6 +31,7 @@ import org.projectplatformer.objectslogic.World;
 import org.projectplatformer.objectslogic.Platform;
 import org.projectplatformer.player.Player;
 import org.projectplatformer.enemy.BaseEnemy;
+import org.projectplatformer.objectslogic.Coin;
 
 import java.util.Arrays;
 import java.util.Iterator;
@@ -43,6 +43,8 @@ public class Main extends ApplicationAdapter {
 
     private static final String IMAGES_PATH = "Levels/Images/";
     private static final String MAPS_PATH   = "Levels/Maps/";
+    private static final String GOBLIN_PATH = "Enemies/Goblin/Walk/";
+    private static final String SPIDER_PATH = "Enemies/Spider/Walk/";
     private final List<String> levelPaths = Arrays.asList(MAPS_PATH + "Level1.tmx");
     private int currentLevelIndex = 0;
 
@@ -81,8 +83,8 @@ public class Main extends ApplicationAdapter {
         // Завантажуємо текстури
         assetManager.load(IMAGES_PATH + "default.png", Texture.class);
         assetManager.load(IMAGES_PATH + "coin.png",    Texture.class);
-        assetManager.load(IMAGES_PATH + "goblin.png",  Texture.class);
-        assetManager.load(IMAGES_PATH + "spider.png",  Texture.class);
+        assetManager.load(GOBLIN_PATH + "Goblin1.png",  Texture.class);
+        assetManager.load(SPIDER_PATH + "Spider1.png",  Texture.class);
 
         // Завантажуємо TMX-карти
         assetManager.setLoader(TiledMap.class,
@@ -170,14 +172,13 @@ public class Main extends ApplicationAdapter {
         Iterator<GameObject> it = world.getObjects().iterator();
         while (it.hasNext()) {
             GameObject obj = it.next();
-            if (obj instanceof Item) {
-                Item coin = (Item) obj;
-                if (player.getBounds().overlaps(coin.getBounds())) {
-                    player.addCoin();
-                    it.remove();
-                }
+            if (obj instanceof Coin) {
+                Coin coin = (Coin) obj;
+                coin.update(delta, player);
+                if (coin.isFinished()) it.remove();
             }
         }
+
 
         // Перевірка падіння
         Rectangle pb = player.getBounds();

@@ -1,9 +1,13 @@
 package org.projectplatformer.levellogic;
 
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.assets.AssetManager;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.graphics.g2d.Animation;
+import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.maps.MapLayer;
 import com.badlogic.gdx.maps.MapObject;
 import com.badlogic.gdx.maps.MapProperties;
@@ -12,18 +16,20 @@ import com.badlogic.gdx.maps.tiled.TiledMap;
 import com.badlogic.gdx.maps.tiled.TiledMapTileLayer;
 import com.badlogic.gdx.maps.tiled.renderers.OrthogonalTiledMapRenderer;
 import com.badlogic.gdx.math.Rectangle;
+import org.projectplatformer.enemy.Skeleton;
 import org.projectplatformer.objectslogic.World;
 import org.projectplatformer.objectslogic.Platform;
 import org.projectplatformer.objectslogic.Item;
 import org.projectplatformer.enemy.Goblin;
 import org.projectplatformer.enemy.Spider;
+import org.projectplatformer.objectslogic.Coin;
 
 import java.util.List;
 
 public class TiledLevel extends Level {
     private final TiledMap map;
     private final OrthogonalTiledMapRenderer renderer;
-    private final Texture defaultTex, coinTex, goblinTex, spiderTex;
+    private final Texture defaultTex, coinTex, goblinTex, spiderTex, skeletonTex;
 
     public TiledLevel(AssetManager am, SpriteBatch batch, String mapPath) {
         this.map      = am.get(mapPath, TiledMap.class);
@@ -32,6 +38,7 @@ public class TiledLevel extends Level {
         coinTex       = am.get("Levels/Images/coin.png", Texture.class);
         goblinTex     = am.get("Levels/Images/goblin.png", Texture.class);
         spiderTex     = am.get("Levels/Images/spider.png", Texture.class);
+        skeletonTex  = new Texture(Gdx.files.internal("Enemies/Skeleton/Skeleton1.png"));
     }
 
     @Override
@@ -96,7 +103,15 @@ public class TiledLevel extends Level {
             for (MapObject obj : coinsLayer.getObjects()
                 .getByType(RectangleMapObject.class)) {
                 Rectangle r = ((RectangleMapObject)obj).getRectangle();
-                world.addObject(new Item(r.x, r.y, coinTex));
+
+                // --- Додаємо анімацію монетки ---
+                TextureRegion region = new TextureRegion(coinTex);
+                Array<TextureRegion> frames = new Array<>();
+                frames.add(region);
+                Animation<TextureRegion> idleAnim = new Animation<>(0.2f, frames, Animation.PlayMode.LOOP);
+                Animation<TextureRegion> collectAnim = new Animation<>(0.1f, frames, Animation.PlayMode.NORMAL);
+
+                world.addObject(new Coin(r.x, r.y, idleAnim, collectAnim));
             }
         }
 
@@ -111,6 +126,9 @@ public class TiledLevel extends Level {
                     world.addEnemy(new Goblin(r.x, r.y, goblinTex));
                 } else if ("Spider".equals(type)) {
                     world.addEnemy(new Spider(r.x, r.y, spiderTex));
+                }
+                else if ("Skeleton".equals(type)) {
+                    world.addEnemy(new Skeleton(r.x, r.y, skeletonTex));
                 }
             }
         }
@@ -139,4 +157,3 @@ public class TiledLevel extends Level {
         map.dispose();
     }
 }
-
