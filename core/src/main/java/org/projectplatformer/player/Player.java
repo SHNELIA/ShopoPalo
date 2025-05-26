@@ -7,7 +7,6 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Rectangle;
-import com.badlogic.gdx.utils.TimeUtils;
 import org.projectplatformer.animations.AnimationManager;
 import org.projectplatformer.animations.AnimationManager.State;
 import org.projectplatformer.enemy.BaseEnemy;
@@ -17,7 +16,6 @@ import org.projectplatformer.weapon.SpearWeapon;
 import org.projectplatformer.weapon.SwordWeapon;
 import org.projectplatformer.weapon.Weapon;
 
-
 import java.util.List;
 
 public class Player {
@@ -25,7 +23,6 @@ public class Player {
     private final AnimationManager animationManager;
     private Weapon currentWeapon;
 
-    // Межі світу
     private float worldWidth = Float.MAX_VALUE;
     private float worldHeight = Float.MAX_VALUE;
     public void setWorldBounds(float w, float h) {
@@ -33,133 +30,186 @@ public class Player {
         this.worldHeight = h;
     }
 
-    // Рух
+    // --- Смерть/життя ---
+    private boolean isAlive = true;
+    private boolean dying = false;
+    private float deathTimer = 0f;
+    private static final float DEATH_ANIMATION_DELAY = 0.5f; // після DEFEAT перед респавном
+    private static final float DEATH_RESPAWN_X = 32f;  // можна змінити під свою карту
+    private static final float DEATH_RESPAWN_Y = 100f; // можна змінити під свою карту
+
+    // --- Бойова система ---
+    private boolean attacking = false;
+    private boolean attackQueued = false;
+    private float attackCooldown = 0f;
+    private static final float ATTACK_COOLDOWN = 0.5f;
+    private boolean hitboxActive = false;
+    private boolean arrowReleased = false;
+
+    // --- Переміщення ---
     private static final float MOVE_SPEED   = 100f;
     private static final float JUMP_SPEED   = 350f;
     private static final int   MAX_JUMPS    = 2;
 
-    // Wall-jump параметри
     private static final float WALL_THRESHOLD = 5f;
     private static final float WALL_JUMP_UP   = 100f;
     private static final float WALL_JUMP_PUSH = 200f;
+    private static final float WALL_SLIDE_SPEED = 50f;
 
-    // Dash
     private static final float DASH_SPEED = 400f;
-    private static final float DASH_TIME = 0.15f;
-    private static final float DASH_COOLDOWN = 1.0f;
-    private static final float DOUBLE_TAP_TIME = 0.25f;
     private float dashTimer = 0f;
     private float dashCooldownTimer = 0f;
-    private float lastLeftTapTime = -1f;
-    private float lastRightTapTime = -1f;
     private int dashDirection = 0;
 
-    // Атака
-    private boolean attacking = false;
-    private float attackTimer = 0f;
-    private float attackCooldown = 0f;
-    private static final float ATTACK_DURATION = 0.2f;
-    private static final float ATTACK_COOLDOWN = 0.5f;
+    private static final float ATTACK_ACTIVATE_FROM_SWORD = 0.13f;
+    private static final float ATTACK_ACTIVATE_TO_SWORD   = 0.28f;
+    private static final float ATTACK_ACTIVATE_FROM_SPEAR = 0.12f;
+    private static final float ATTACK_ACTIVATE_TO_SPEAR   = 0.35f;
+    private static final float BOW_ATTACK_ACTIVATE_FROM = 0.23f;
+    private static final float BOW_ATTACK_ACTIVATE_TO   = 0.33f;
 
-    // Отримання шкоди
     private float damageCooldown = 0f;
     private static final float DAMAGE_COOLDOWN = 1f;
 
-    // Збір монетки
     private boolean coinCollect = false;
     private float collectTimer = 0f;
-    private static final float COINCOLLECT_DURATION = 0.3f;
+    private static final float COINCOLLECT_DURATION = 0.5f;
 
-    // Інші стани
     private boolean facingRight = true;
-    private boolean isAlive = true;
     private int health = 100;
     private final int maxHealth = 100;
-
-    private int     coins       = 0;
-    private int     jumpCount   = 0;
-    private static final float WALL_SLIDE_SPEED = 50f;
+    private int coins = 0;
+    private int jumpCount = 0;
 
     public Player(float x, float y) {
-        Rectangle bounds = new Rectangle(x, y, 32, 64);
-        physics = new PhysicsComponent(
-            bounds,
-
-            -1000f,  // gravity
-            -1000f,  // maxFallSpeed
-            0.9f,    // drag
-            16f,     // maxStepHeight
-            200f     // stepUpSpeed
-
-        );
+        Rectangle bounds = new Rectangle(x, y, 32, 52);
+        physics = new PhysicsComponent(bounds, -1000f, -1000f, 0.9f, 16f, 200f);
         animationManager = new AnimationManager();
         currentWeapon = new SwordWeapon();
     }
 
+    private void startAttack(List<Rectangle> platforms) {
+        Rectangle b = physics.getBounds();
+        float pivotX = b.x + b.width/2f;
+        float pivotY = b.y + (currentWeapon instanceof SpearWeapon ? b.height / 2f : b.height * 0.7f);
+
+        attacking      = true;
+        hitboxActive   = false;
+        arrowReleased  = false;
+        attackCooldown = ATTACK_COOLDOWN;
+
+        if (currentWeapon instanceof BowWeapon) {
+            ((BowWeapon)currentWeapon).setPlatforms(platforms);
+            animationManager.forceState(State.ATTACKBOW, facingRight);
+        } else if (currentWeapon instanceof SpearWeapon) {
+            currentWeapon.startAttack(pivotX, pivotY, facingRight);
+            animationManager.forceState(State.ATTACKSPEAR, facingRight);
+        } else {
+            currentWeapon.startAttack(pivotX, pivotY, facingRight);
+            animationManager.forceState(State.ATTACKSWORD, facingRight);
+        }
+    }
+
     public void update(float delta, List<Rectangle> platforms, List<BaseEnemy> enemies) {
-        // 1) Якщо вже мертвий — тільки відграємо анімацію смерті й ніде більше не ліземо
-        if (!isAlive) {
+        // --- Смерть та респавн ---
+        if (dying) {
             animationManager.update(delta, State.DEFEAT, facingRight);
+            deathTimer += delta;
+            if (animationManager.isAnimationFinished(State.DEFEAT)) {
+                // Пауза після анімації DEFEAT для "ефекту"
+                if (deathTimer >= animationManager.getStateTime() + DEATH_ANIMATION_DELAY) {
+                    respawn(DEATH_RESPAWN_X, DEATH_RESPAWN_Y);
+                }
+            }
+            return;
+        }
+        if (!isAlive) {
+            animationManager.forceState(State.DEFEAT, facingRight);
             return;
         }
 
-        // 2) Оновлення таймерів
+        // --- Таймери ---
         damageCooldown    = Math.max(0f, damageCooldown - delta);
         dashCooldownTimer = Math.max(0f, dashCooldownTimer - delta);
         attackCooldown    = Math.max(0f, attackCooldown - delta);
-        if (attacking) {
-            attackTimer -= delta;
-            if (attackTimer <= 0f) attacking = false;
+
+        if (currentWeapon instanceof BowWeapon)
+            ((BowWeapon)currentWeapon).setPlatforms(platforms);
+
+        if (Gdx.input.isKeyJustPressed(Input.Keys.J)) {
+            if (!attacking) startAttack(platforms);
+            else attackQueued = true;
         }
-        float now = TimeUtils.nanoTime() / 1e9f;
+
+        // --- Атака та анімації атаки ---
+        if (attacking) {
+            float t = animationManager.getStateTime();
+            State currentAnimState = animationManager.getCurrentState();
+            if (currentWeapon instanceof SpearWeapon && currentAnimState == State.ATTACKSPEAR) {
+                hitboxActive = t > ATTACK_ACTIVATE_FROM_SPEAR && t < ATTACK_ACTIVATE_TO_SPEAR;
+                if (animationManager.isAnimationFinished(State.ATTACKSPEAR)) {
+                    attacking = false; hitboxActive = false;
+                    if (attackQueued) { attackQueued = false; startAttack(platforms);}
+                }
+            } else if (currentWeapon instanceof BowWeapon && currentAnimState == State.ATTACKBOW) {
+                if (t > BOW_ATTACK_ACTIVATE_FROM && t < BOW_ATTACK_ACTIVATE_TO && !arrowReleased) {
+                    Rectangle b = physics.getBounds();
+                    float pivotX = b.x + b.width/2f;
+                    float pivotY = b.y + b.height * 0.7f;
+                    ((BowWeapon) currentWeapon).releaseArrow(pivotX, pivotY, facingRight);
+                    arrowReleased = true;
+                }
+                if (animationManager.isAnimationFinished(State.ATTACKBOW)) {
+                    attacking = false; arrowReleased = false;
+                    if (attackQueued) { attackQueued = false; startAttack(platforms);}
+                }
+                hitboxActive = false;
+            } else if (!(currentWeapon instanceof BowWeapon) && currentAnimState == State.ATTACKSWORD) {
+                hitboxActive = t > ATTACK_ACTIVATE_FROM_SWORD && t < ATTACK_ACTIVATE_TO_SWORD;
+                if (animationManager.isAnimationFinished(State.ATTACKSWORD)) {
+                    attacking = false; hitboxActive = false;
+                    if (attackQueued) { attackQueued = false; startAttack(platforms);}
+                }
+            } else {
+                hitboxActive = false; arrowReleased = false;
+            }
+        } else {
+            hitboxActive = false; arrowReleased = false;
+        }
 
         Rectangle b  = physics.getBounds();
         float    velY = physics.getVelocityY();
 
-        // --- Dash і базовий рух ---
+        // --- Dash і рух ---
         if (dashTimer > 0f) {
             physics.setVelocityX(dashDirection * DASH_SPEED);
             dashTimer -= delta;
         } else {
-            if (Gdx.input.isKeyPressed(Input.Keys.A)) {
-                physics.setVelocityX(-MOVE_SPEED);
-                facingRight = false;
-            } else if (Gdx.input.isKeyPressed(Input.Keys.D)) {
-                physics.setVelocityX(MOVE_SPEED);
-                facingRight = true;
-            } else {
-                physics.setVelocityX(0f);
-            }
+            if (Gdx.input.isKeyPressed(Input.Keys.A)) { physics.setVelocityX(-MOVE_SPEED); facingRight = false; }
+            else if (Gdx.input.isKeyPressed(Input.Keys.D)) { physics.setVelocityX(MOVE_SPEED); facingRight = true; }
+            else physics.setVelocityX(0f);
         }
 
-        // --- Wall-slide / jump / climbing ---
+        // --- Wall slide / jump ---
         boolean touchingWall = false, wallOnLeft = false, wallOnRight = false;
         if (velY < 0f) {
             for (Rectangle p : platforms) {
-                // перевірка вертикального перекриття
-                boolean verticalOverlap =
-                    b.y < p.y + p.height &&
-                        b.y + b.height > p.y;
+                boolean verticalOverlap = b.y < p.y + p.height && b.y + b.height > p.y;
                 if (!verticalOverlap) continue;
-
                 float dxL = b.x - (p.x + p.width);
                 float dxR = p.x - (b.x + b.width);
-                if (Math.abs(dxL) < WALL_THRESHOLD)
-                    touchingWall = wallOnLeft = true;
-                if (Math.abs(dxR) < WALL_THRESHOLD)
-                    touchingWall = wallOnRight = true;
+                if (Math.abs(dxL) < WALL_THRESHOLD) touchingWall = wallOnLeft = true;
+                if (Math.abs(dxR) < WALL_THRESHOLD) touchingWall = wallOnRight = true;
             }
         }
         boolean sliding = touchingWall && velY < 0f;
         boolean justWallJumped = false;
-        // стрибок / wall-jump
+
         if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
             if (sliding) {
                 physics.setVelocityY(JUMP_SPEED + WALL_JUMP_UP);
                 jumpCount = MAX_JUMPS;
-                physics.setVelocityX(
-                    wallOnRight ? -WALL_JUMP_PUSH : WALL_JUMP_PUSH
-                );
+                physics.setVelocityX(wallOnRight ? -WALL_JUMP_PUSH : WALL_JUMP_PUSH);
                 facingRight = !wallOnRight;
                 justWallJumped = true;
             } else if (jumpCount < MAX_JUMPS) {
@@ -167,141 +217,68 @@ public class Player {
                 jumpCount++;
             }
         }
+        if (physics.getVelocityY() == 0f) jumpCount = 0;
 
-        if (physics.getVelocityY() == 0f) {
-            jumpCount = 0;
-        }
-
-        // карабкання по стіні (wall-climb)
         if (sliding && !justWallJumped) {
-            // тримаємо A, коли стіна зліва, або D, коли стіна справа
-            boolean holdWallKey =
-                (wallOnLeft  && Gdx.input.isKeyPressed(Input.Keys.A)) ||
-                    (wallOnRight && Gdx.input.isKeyPressed(Input.Keys.D));
+            boolean holdWallKey = (wallOnLeft  && Gdx.input.isKeyPressed(Input.Keys.A))
+                || (wallOnRight && Gdx.input.isKeyPressed(Input.Keys.D));
+            if (holdWallKey) physics.startClimbing(-WALL_SLIDE_SPEED);
+            else physics.stopClimbing();
+        } else physics.stopClimbing();
 
-            if (holdWallKey) {
-                // тільки тоді сповзаємо
-                physics.startClimbing(-WALL_SLIDE_SPEED);
-            } else {
-                physics.stopClimbing();
-            }
-        } else {
-            physics.stopClimbing();
-        }
-
-        // Збір монетки
         if (coinCollect) {
             collectTimer -= delta;
             if (collectTimer <= 0f) coinCollect = false;
         }
 
-        // --- Physics Update ---
         physics.tryStepUp(platforms, physics.getVelocityX() >= 0f);
         physics.update(delta, platforms);
 
-        // --- Зброя і атака ---
-        if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_1)) {
-            currentWeapon = new SwordWeapon();
-        }
-        if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_2)) {
-            currentWeapon = new SpearWeapon(
-                65f,   // maxLength
-                15f,    // width
-                0.3f,  // duration
-                1.0f,  // cooldown
-                30      // damage
-            );
-        }
+        // --- Зміна зброї ---
+        if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_1)) currentWeapon = new SwordWeapon();
+        if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_2)) currentWeapon = new SpearWeapon(65f, 15f, 0.5f, 0f, 30);
+        if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_3)) currentWeapon = new BowWeapon();
 
-        if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_3)) {
-            currentWeapon = new BowWeapon();
-        }
+        if (currentWeapon instanceof BowWeapon) ((BowWeapon)currentWeapon).setPlatforms(platforms);
 
-        // --- Physics Update ---
-        physics.tryStepUp(platforms, physics.getVelocityX() >= 0f);
-        physics.update(delta, platforms);
-
-// --- Block entering enemy hitboxes ---
-        for (BaseEnemy e : enemies) {
-            if (!e.isAlive()) continue;
-            Rectangle eb = e.getBounds();
-            Rectangle pb = physics.getBounds();
-            if (pb.overlaps(eb)) {
-                // обчислити глибину перекриття по X та Y
-                float overlapX = Math.min(pb.x + pb.width,  eb.x + eb.width)
-                    - Math.max(pb.x,               eb.x);
-                float overlapY = Math.min(pb.y + pb.height, eb.y + eb.height)
-                    - Math.max(pb.y,               eb.y);
-
-                // рухаємося найкоротшим шляхом назовні
-                if (overlapX < overlapY) {
-                    // відштовхуємося по X
-                    if (pb.x < eb.x) {
-                        pb.x -= overlapX;
-                    } else {
-                        pb.x += overlapX;
-                    }
-                    physics.setVelocityX(0f);
-                } else {
-                    // відштовхуємося по Y
-                    if (pb.y < eb.y) {
-                        pb.y -= overlapY;
-                    } else {
-                        pb.y += overlapY;
-                    }
-                    physics.setVelocityY(0f);
-                }
-            }
-        }
-
-
-// --- Attack trigger ---
-        if (Gdx.input.isKeyJustPressed(Input.Keys.J)) {
-            float pivotX = b.x + b.width/2f;
-            float pivotY = b.y + (currentWeapon instanceof SpearWeapon
-                ? b.height / 2f
-                : b.height * 0.7f);
-            currentWeapon.startAttack(pivotX, pivotY, facingRight);
-            attacking      = true;
-            attackTimer    = ATTACK_DURATION;
-            attackCooldown = ATTACK_COOLDOWN;
-        }
         float pivotX = b.x + b.width / 2f;
-        float pivotY = b.y + (currentWeapon instanceof SpearWeapon
-            ? b.height / 2f
-            : b.height * 0.7f);
+        float pivotY = b.y + (currentWeapon instanceof SpearWeapon ? b.height / 2f : b.height * 0.7f);
         currentWeapon.update(delta, pivotX, pivotY, facingRight);
-        currentWeapon.applyDamage(enemies);
 
-        // --- Визначаємо найвищий пріоритет стан анімації ---
+        if (currentWeapon instanceof BowWeapon) currentWeapon.applyDamage(enemies);
+        else if (hitboxActive) currentWeapon.applyDamage(enemies);
+
+        // --- Стан анімації ---
         State newState;
-        if (coinCollect) {
-            newState = State.COINCOLLECT; // <-- Ось ця гілка
-        } else if (sliding) {
-                newState = State.SLIDING;
-        } else if (attacking) {
-            newState = currentWeapon instanceof SpearWeapon
-                ? State.ATTACKSPEAR
-                : State.ATTACKSWORD;
-        } else if (physics.getVelocityY() != 0f) {
-            newState = State.JUMP;
-        } else if (physics.getVelocityX() != 0f) {
-            newState = State.WALK;
-        } else {
-            newState = State.IDLE;
-        }
+        if (dying) newState = State.DEFEAT;
+        else if (coinCollect) newState = State.COINCOLLECT;
+        else if (sliding) newState = State.SLIDING;
+        else if (attacking) {
+            if (currentWeapon instanceof BowWeapon) newState = State.ATTACKBOW;
+            else if (currentWeapon instanceof SpearWeapon) newState = State.ATTACKSPEAR;
+            else newState = State.ATTACKSWORD;
+        } else if (physics.getVelocityY() != 0f) newState = State.JUMP;
+        else if (physics.getVelocityX() != 0f) newState = State.WALK;
+        else newState = State.IDLE;
+
         animationManager.update(delta, newState, facingRight);
 
-        // --- Межі світу —
         b.x = MathUtils.clamp(b.x, 0f, worldWidth  - b.width);
         b.y = Math.min(b.y, worldHeight - b.height);
     }
 
-
     public void render(SpriteBatch batch) {
         Rectangle b = physics.getBounds();
         TextureRegion frame = animationManager.getCurrentFrame();
-        batch.draw(frame, b.x, b.y, b.width, b.height);
+        float drawX = b.x, drawY = b.y, drawW = b.width, drawH = b.height;
+        if (animationManager.getCurrentState() == State.ATTACKSWORD) { float extraWidth = 40f; drawW += extraWidth; if (!facingRight) drawX -= extraWidth;}
+        if (animationManager.getCurrentState() == State.ATTACKSPEAR) { float extraWidth = 40f; drawW += extraWidth; if (!facingRight) drawX -= extraWidth;}
+        if (animationManager.getCurrentState() == State.ATTACKBOW)   { float extraWidth = 40f; drawW += extraWidth; if (!facingRight) drawX -= extraWidth;}
+
+        batch.draw(frame, drawX, drawY, drawW, drawH);
+
+        if (currentWeapon instanceof BowWeapon)
+            ((BowWeapon)currentWeapon).renderProjectiles(batch);
     }
 
     public void renderHitbox(ShapeRenderer r) {
@@ -313,15 +290,11 @@ public class Player {
             r.setColor(0f,1f,0f,1f);
             r.rect(hb.x, hb.y, hb.width, hb.height);
         }
-// якщо це лук — малюємо всі стріли:
-        if (currentWeapon instanceof BowWeapon) {
-            ((BowWeapon)currentWeapon).renderProjectiles(r);
-        }
-
+        if (currentWeapon instanceof BowWeapon) ((BowWeapon)currentWeapon).renderProjectiles(r);
     }
 
-    // Геттери та утиліти
     public boolean isAlive() { return isAlive; }
+    public boolean isDying() { return dying; }
     public int getHealth() { return health; }
     public int getMaxHealth() { return maxHealth; }
     public int getCoins() { return coins; }
@@ -329,17 +302,27 @@ public class Player {
     public void addCoin() { coins++; }
 
     public void takeDamage(int dmg) {
-        if (!isAlive) return;
+        if (!isAlive || dying) return;
         health -= dmg;
-        if (health <= 0) isAlive = false;
+        if (health <= 0) {
+            health = 0;
+            dying = true;
+            isAlive = false;
+            deathTimer = 0f;
+            animationManager.forceState(State.DEFEAT, facingRight);
+        }
     }
 
     public void respawn(float x, float y) {
         Rectangle b = physics.getBounds();
         b.x = x; b.y = y;
-        health = maxHealth; isAlive = true;
+        health = maxHealth;
+        isAlive = true;
+        dying = false;
+        deathTimer = 0f;
         physics.setVelocityY(0f);
         jumpCount = 0;
+        animationManager.forceState(State.IDLE, true);
     }
 
     public void coinCollectAnimation() {
@@ -351,4 +334,3 @@ public class Player {
         animationManager.dispose();
     }
 }
-
