@@ -24,7 +24,6 @@ import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
-
 import org.projectplatformer.levellogic.TiledLevel;
 import org.projectplatformer.objectslogic.GameObject;
 import org.projectplatformer.objectslogic.Item;
@@ -32,6 +31,7 @@ import org.projectplatformer.objectslogic.World;
 import org.projectplatformer.objectslogic.Platform;
 import org.projectplatformer.player.Player;
 import org.projectplatformer.enemy.BaseEnemy;
+import org.projectplatformer.objectslogic.Coin;
 
 import java.util.Arrays;
 import java.util.Iterator;
@@ -170,14 +170,13 @@ public class Main extends ApplicationAdapter {
         Iterator<GameObject> it = world.getObjects().iterator();
         while (it.hasNext()) {
             GameObject obj = it.next();
-            if (obj instanceof Item) {
-                Item coin = (Item) obj;
-                if (player.getBounds().overlaps(coin.getBounds())) {
-                    player.addCoin();
-                    it.remove();
-                }
+            if (obj instanceof Coin) {
+                Coin coin = (Coin) obj;
+                coin.update(delta, player);
+                if (coin.isFinished()) it.remove();
             }
         }
+
 
         // Перевірка падіння
         Rectangle pb = player.getBounds();

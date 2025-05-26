@@ -4,6 +4,9 @@ import com.badlogic.gdx.assets.AssetManager;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.graphics.g2d.Animation;
+import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.maps.MapLayer;
 import com.badlogic.gdx.maps.MapObject;
 import com.badlogic.gdx.maps.MapProperties;
@@ -17,6 +20,7 @@ import org.projectplatformer.objectslogic.Platform;
 import org.projectplatformer.objectslogic.Item;
 import org.projectplatformer.enemy.Goblin;
 import org.projectplatformer.enemy.Spider;
+import org.projectplatformer.objectslogic.Coin;
 
 import java.util.List;
 
@@ -96,7 +100,15 @@ public class TiledLevel extends Level {
             for (MapObject obj : coinsLayer.getObjects()
                 .getByType(RectangleMapObject.class)) {
                 Rectangle r = ((RectangleMapObject)obj).getRectangle();
-                world.addObject(new Item(r.x, r.y, coinTex));
+
+                // --- Додаємо анімацію монетки ---
+                TextureRegion region = new TextureRegion(coinTex);
+                Array<TextureRegion> frames = new Array<>();
+                frames.add(region);
+                Animation<TextureRegion> idleAnim = new Animation<>(0.2f, frames, Animation.PlayMode.LOOP);
+                Animation<TextureRegion> collectAnim = new Animation<>(0.1f, frames, Animation.PlayMode.NORMAL);
+
+                world.addObject(new Coin(r.x, r.y, idleAnim, collectAnim));
             }
         }
 
@@ -139,4 +151,3 @@ public class TiledLevel extends Level {
         map.dispose();
     }
 }
-
