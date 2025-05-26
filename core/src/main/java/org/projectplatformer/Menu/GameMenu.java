@@ -14,10 +14,7 @@ import java.awt.event.ComponentAdapter;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 
-
-
 public class GameMenu extends JFrame implements ActionListener, ComponentListener {
-
     // UI Components
     private JButton playButton;
     private JButton guideButton;
@@ -35,7 +32,6 @@ public class GameMenu extends JFrame implements ActionListener, ComponentListene
     private JButton dialogNewGameButton;
     private JButton dialogChooseSaveButton;
     private JButton dialogBackToMainButton;
-
 
     // Colors
     private static final Color FANTASY_DARK_WOOD = new Color(60, 40, 20);
@@ -68,7 +64,6 @@ public class GameMenu extends JFrame implements ActionListener, ComponentListene
     static {
 
         try {
-
             FONT_MAIN_TITLE_BASE = new Font("Arial", Font.BOLD, 60);
             FONT_BUTTON_LARGE_BASE = new Font("Arial", Font.BOLD, 28);
             FONT_BUTTON_SMALL_BASE = new Font("Arial", Font.BOLD, 14);
@@ -77,7 +72,7 @@ public class GameMenu extends JFrame implements ActionListener, ComponentListene
             FONT_DIALOG_TEXT_BASE = new Font("Arial", Font.PLAIN, 18);
         } catch (Exception e) {
             System.err.println("Error loading font. Using Arial. " + e.getMessage());
-            // Fallback to Arial if font loading fails
+
             FONT_MAIN_TITLE_BASE = new Font("Arial", Font.BOLD, 60);
             FONT_BUTTON_LARGE_BASE = new Font("Arial", Font.BOLD, 28);
             FONT_BUTTON_SMALL_BASE = new Font("Arial", Font.BOLD, 14);

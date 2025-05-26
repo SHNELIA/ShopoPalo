@@ -33,8 +33,10 @@ public class LanguageManager {
             "Character Controls:\n" +
             "- Movement: A (left), D (right)\n" +
             "- Double jump - double click Space, Dash - double click A or D\n" +
-            "- E - interaction with something\n" +
-            "- Attack - mouse 1, Melee weapon - 1, Range weapon - 2\n" +
+            "- E - interaction \n" +
+            "- H - Use Heal\n" +
+            "- Attack - mouse 1\n" +
+            "- Sword - 1, Spear - 2, Bow - 3\n" +
             "- Jump: Space\n" +
             "The game has 4 levels. During the game you can collect coins to buy new items \n");
         english.put("settingsWindow_title", "Settings - ShopoPalo");
