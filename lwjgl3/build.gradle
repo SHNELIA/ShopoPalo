@@ -44,9 +44,12 @@ dependencies {
 def os = System.properties['os.name'].toLowerCase()
 
 run {
-  workingDir = rootProject.projectDir
-  if (os.contains('mac')) jvmArgs += "-XstartOnFirstThread"
+  workingDir = project(":lwjgl3").file("assets")
+  if (os.contains("mac")) {
+    jvmArgs += "-XstartOnFirstThread"
+  }
 }
+
 
 
 jar {
