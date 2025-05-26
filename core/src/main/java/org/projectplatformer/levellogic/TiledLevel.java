@@ -1,5 +1,6 @@
 package org.projectplatformer.levellogic;
 
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.assets.AssetManager;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.OrthographicCamera;
@@ -12,6 +13,7 @@ import com.badlogic.gdx.maps.tiled.TiledMap;
 import com.badlogic.gdx.maps.tiled.TiledMapTileLayer;
 import com.badlogic.gdx.maps.tiled.renderers.OrthogonalTiledMapRenderer;
 import com.badlogic.gdx.math.Rectangle;
+import org.projectplatformer.enemy.Skeleton;
 import org.projectplatformer.objectslogic.World;
 import org.projectplatformer.objectslogic.Platform;
 import org.projectplatformer.objectslogic.Item;
@@ -23,7 +25,7 @@ import java.util.List;
 public class TiledLevel extends Level {
     private final TiledMap map;
     private final OrthogonalTiledMapRenderer renderer;
-    private final Texture defaultTex, coinTex, goblinTex, spiderTex;
+    private final Texture defaultTex, coinTex, goblinTex, spiderTex, skeletonTex;
 
     public TiledLevel(AssetManager am, SpriteBatch batch, String mapPath) {
         this.map      = am.get(mapPath, TiledMap.class);
@@ -32,6 +34,7 @@ public class TiledLevel extends Level {
         coinTex       = am.get("Levels/Images/coin.png", Texture.class);
         goblinTex     = am.get("Levels/Images/goblin.png", Texture.class);
         spiderTex     = am.get("Levels/Images/spider.png", Texture.class);
+        skeletonTex  = new Texture(Gdx.files.internal("Enemies/Skeleton/Skeleton1.png"));
     }
 
     @Override
@@ -111,6 +114,9 @@ public class TiledLevel extends Level {
                     world.addEnemy(new Goblin(r.x, r.y, goblinTex));
                 } else if ("Spider".equals(type)) {
                     world.addEnemy(new Spider(r.x, r.y, spiderTex));
+                }
+                else if ("Skeleton".equals(type)) {
+                    world.addEnemy(new Skeleton(r.x, r.y, skeletonTex));
                 }
             }
         }
