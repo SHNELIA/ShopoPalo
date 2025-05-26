@@ -14,6 +14,7 @@ public abstract class BaseEnemy {
     protected final Texture          texture;
     protected int                    health;
     protected boolean                alive = true;
+    protected boolean                deadAndGone = false; // новий флаг для видалення ворога
 
     // --- Атака ворога ---
     protected float   attackRange;
@@ -36,7 +37,7 @@ public abstract class BaseEnemy {
     }
 
     public void update(float delta, Player player, List<Rectangle> platforms) {
-        if (!alive) return;
+        if (!alive || deadAndGone) return;
 
         // AI логіка: встановлює швидкості через physics.setVelocityX/Y
         aiMove(delta, player, platforms);
@@ -79,13 +80,13 @@ public abstract class BaseEnemy {
     }
 
     public void render(SpriteBatch batch) {
-        if (!alive) return;
+        if (!alive || deadAndGone) return;
         Rectangle b = physics.getBounds();
         batch.draw(texture, b.x, b.y, b.width, b.height);
     }
 
     public void renderHitbox(ShapeRenderer r) {
-        if (!alive) return;
+        if (!alive || deadAndGone) return;
         Rectangle b = physics.getBounds();
         r.setColor(1f, 0f, 1f, 1f);
         r.rect(b.x, b.y, b.width, b.height);
@@ -104,6 +105,9 @@ public abstract class BaseEnemy {
         if (health <= 0) alive = false;
     }
 
+    /** Позначає ворога як "зниклого" для прибирання з гри */
+    public void setDeadAndGone() { deadAndGone = true; }
+    public boolean isDeadAndGone() { return deadAndGone; }
+
     public void dispose() {}
 }
-
