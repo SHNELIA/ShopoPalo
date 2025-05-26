@@ -19,6 +19,7 @@ public class PhysicsComponent {
     private final float maxStepHeight;
     private final float stepUpSpeed;
 
+
     // Карабкання по стіні
     private boolean isClimbing = false;
     private float   climbSpeed = 0f;
@@ -117,5 +118,9 @@ public class PhysicsComponent {
     public float getVelocityX() { return velX; }
     public float getVelocityY() { return velY; }
     public Rectangle getBounds() { return bounds; }
+
+    public float getStepUpSpeed() {
+        return stepUpSpeed;
+    }
 }
 

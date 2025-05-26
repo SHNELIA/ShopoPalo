@@ -195,7 +195,6 @@ public class Player {
             if (collectTimer <= 0f) coinCollect = false;
         }
 
-
         // --- Physics Update ---
         physics.tryStepUp(platforms, physics.getVelocityX() >= 0f);
         physics.update(delta, platforms);
@@ -205,7 +204,13 @@ public class Player {
             currentWeapon = new SwordWeapon();
         }
         if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_2)) {
-            currentWeapon = new SpearWeapon();
+            currentWeapon = new SpearWeapon(
+                65f,   // maxLength
+                15f,    // width
+                0.3f,  // duration
+                1.0f,  // cooldown
+                30      // damage
+            );
         }
 
         if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_3)) {
