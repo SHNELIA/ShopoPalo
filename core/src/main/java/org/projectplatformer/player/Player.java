@@ -12,9 +12,11 @@ import org.projectplatformer.animations.AnimationManager;
 import org.projectplatformer.animations.AnimationManager.State;
 import org.projectplatformer.enemy.BaseEnemy;
 import org.projectplatformer.physics.PhysicsComponent;
+import org.projectplatformer.weapon.BowWeapon;
 import org.projectplatformer.weapon.SpearWeapon;
 import org.projectplatformer.weapon.SwordWeapon;
 import org.projectplatformer.weapon.Weapon;
+
 
 import java.util.List;
 
@@ -32,14 +34,14 @@ public class Player {
     }
 
     // Рух
-    private static final float MOVE_SPEED = 200f;
-    private static final float JUMP_SPEED = 600f;
-    private static final int MAX_JUMPS = 2;
+    private static final float MOVE_SPEED   = 100f;
+    private static final float JUMP_SPEED   = 350f;
+    private static final int   MAX_JUMPS    = 2;
 
     // Wall-jump параметри
     private static final float WALL_THRESHOLD = 5f;
-    private static final float WALL_JUMP_UP = 200f;
-    private static final float WALL_JUMP_PUSH = 500f;
+    private static final float WALL_JUMP_UP   = 100f;
+    private static final float WALL_JUMP_PUSH = 200f;
 
     // Dash
     private static final float DASH_SPEED = 400f;
@@ -68,18 +70,22 @@ public class Player {
     private boolean isAlive = true;
     private int health = 100;
     private final int maxHealth = 100;
-    private int coins = 0;
-    private int jumpCount = 0;
+
+    private int     coins       = 0;
+    private int     jumpCount   = 0;
+    private static final float WALL_SLIDE_SPEED = 50f;
 
     public Player(float x, float y) {
-        Rectangle bounds = new Rectangle(x, y, 33, 52);
+        Rectangle bounds = new Rectangle(x, y, 32, 64);
         physics = new PhysicsComponent(
             bounds,
-            -3000f,  // gravity
-            -1000f, // maxFallSpeed
-            0.9f,   // drag
-            16f,    // maxStepHeight
-            200f    // stepUpSpeed
+
+            -1000f,  // gravity
+            -1000f,  // maxFallSpeed
+            0.9f,    // drag
+            16f,     // maxStepHeight
+            200f     // stepUpSpeed
+          
         );
         animationManager = new AnimationManager();
         currentWeapon = new SwordWeapon();
@@ -125,44 +131,60 @@ public class Player {
         boolean touchingWall = false, wallOnLeft = false, wallOnRight = false;
         if (velY < 0f) {
             for (Rectangle p : platforms) {
-                if (!b.overlaps(p)) continue;
+                // перевірка вертикального перекриття
+                boolean verticalOverlap =
+                    b.y < p.y + p.height &&
+                        b.y + b.height > p.y;
+                if (!verticalOverlap) continue;
+
                 float dxL = b.x - (p.x + p.width);
                 float dxR = p.x - (b.x + b.width);
-                if (Math.abs(dxL) < WALL_THRESHOLD) touchingWall = wallOnLeft = true;
-                if (Math.abs(dxR) < WALL_THRESHOLD) touchingWall = wallOnRight = true;
+                if (Math.abs(dxL) < WALL_THRESHOLD)
+                    touchingWall = wallOnLeft = true;
+                if (Math.abs(dxR) < WALL_THRESHOLD)
+                    touchingWall = wallOnRight = true;
             }
         }
         boolean sliding = touchingWall && velY < 0f;
         boolean justWallJumped = false;
-        Rectangle headProbe = new Rectangle(b.x, b.y + b.height, b.width, 2f);
-        boolean ceilingAbove = platforms.stream().anyMatch(p -> headProbe.overlaps(p));
-
+        // стрибок / wall-jump
         if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
             if (sliding) {
                 physics.setVelocityY(JUMP_SPEED + WALL_JUMP_UP);
                 jumpCount = MAX_JUMPS;
-                physics.setVelocityX(wallOnRight ? -WALL_JUMP_PUSH : WALL_JUMP_PUSH);
+                physics.setVelocityX(
+                    wallOnRight ? -WALL_JUMP_PUSH : WALL_JUMP_PUSH
+                );
                 facingRight = !wallOnRight;
                 justWallJumped = true;
-            } else if (jumpCount < MAX_JUMPS && !ceilingAbove) {
+            } else if (jumpCount < MAX_JUMPS) {
                 physics.setVelocityY(JUMP_SPEED);
                 jumpCount++;
             }
         }
-        if (physics.getVelocityY() == 0f) jumpCount = 0;
+
+        if (physics.getVelocityY() == 0f) {
+            jumpCount = 0;
+        }
+
+        // карабкання по стіні (wall-climb)
         if (sliding && !justWallJumped) {
+            // тримаємо A, коли стіна зліва, або D, коли стіна справа
             boolean holdWallKey =
                 (wallOnLeft  && Gdx.input.isKeyPressed(Input.Keys.A)) ||
                     (wallOnRight && Gdx.input.isKeyPressed(Input.Keys.D));
+
             if (holdWallKey) {
-                if (Gdx.input.isKeyPressed(Input.Keys.UP)) physics.startClimbing(100f);
-                else                                      physics.startClimbing(0f);
+                // тільки тоді сповзаємо
+                physics.startClimbing(-WALL_SLIDE_SPEED);
             } else {
                 physics.stopClimbing();
             }
         } else {
             physics.stopClimbing();
         }
+
+
 
         // --- Physics Update ---
         physics.tryStepUp(platforms, physics.getVelocityX() >= 0f);
@@ -175,8 +197,52 @@ public class Player {
         if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_2)) {
             currentWeapon = new SpearWeapon();
         }
-        if (Gdx.input.isKeyJustPressed(Input.Keys.J) && attackCooldown <= 0f) {
-            float pivotX = b.x + b.width / 2f;
+
+        if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_3)) {
+            currentWeapon = new BowWeapon();
+        }
+
+        // --- Physics Update ---
+        physics.tryStepUp(platforms, physics.getVelocityX() >= 0f);
+        physics.update(delta, platforms);
+
+// --- Block entering enemy hitboxes ---
+        for (BaseEnemy e : enemies) {
+            if (!e.isAlive()) continue;
+            Rectangle eb = e.getBounds();
+            Rectangle pb = physics.getBounds();
+            if (pb.overlaps(eb)) {
+                // обчислити глибину перекриття по X та Y
+                float overlapX = Math.min(pb.x + pb.width,  eb.x + eb.width)
+                    - Math.max(pb.x,               eb.x);
+                float overlapY = Math.min(pb.y + pb.height, eb.y + eb.height)
+                    - Math.max(pb.y,               eb.y);
+
+                // рухаємося найкоротшим шляхом назовні
+                if (overlapX < overlapY) {
+                    // відштовхуємося по X
+                    if (pb.x < eb.x) {
+                        pb.x -= overlapX;
+                    } else {
+                        pb.x += overlapX;
+                    }
+                    physics.setVelocityX(0f);
+                } else {
+                    // відштовхуємося по Y
+                    if (pb.y < eb.y) {
+                        pb.y -= overlapY;
+                    } else {
+                        pb.y += overlapY;
+                    }
+                    physics.setVelocityY(0f);
+                }
+            }
+        }
+
+
+// --- Attack trigger ---
+        if (Gdx.input.isKeyJustPressed(Input.Keys.J)) {
+            float pivotX = b.x + b.width/2f;
             float pivotY = b.y + (currentWeapon instanceof SpearWeapon
                 ? b.height / 2f
                 : b.height * 0.7f);
@@ -225,9 +291,14 @@ public class Player {
         r.rect(b.x, b.y, b.width, b.height);
         Rectangle hb = currentWeapon.getHitbox();
         if (hb != null) {
-            r.setColor(0f, 1f, 0f, 1f);
+            r.setColor(0f,1f,0f,1f);
             r.rect(hb.x, hb.y, hb.width, hb.height);
         }
+// якщо це лук — малюємо всі стріли:
+        if (currentWeapon instanceof BowWeapon) {
+            ((BowWeapon)currentWeapon).renderProjectiles(r);
+        }
+
     }
 
     // Геттери та утиліти
