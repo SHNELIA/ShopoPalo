@@ -1,12 +1,13 @@
 package org.projectplatformer.EnemiesAnimation;
 
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
-import com.badlogic.gdx.utils.Disposable;
 import com.badlogic.gdx.utils.Array;
+import com.badlogic.gdx.utils.Disposable;
 
-public class GoblinAnimationManager implements Disposable {
+public class SkeletonAnimationManager implements Disposable {
     public enum State {
         WALK,
         ATTACK,
@@ -19,23 +20,27 @@ public class GoblinAnimationManager implements Disposable {
 
     private float stateTime;
     private State currentState;
-
     private TextureRegion currentFrame;
 
     private final Texture[] frames;
 
-    public GoblinAnimationManager() {
+    public SkeletonAnimationManager() {
         stateTime = 0f;
         currentState = State.WALK;
 
-        frames = new Texture[11];
-        for (int i = 0; i < 11; i++) {
-            // ПРАВИЛЬНО
-            frames[i] = new Texture("Enemies/Goblin/Goblin" + (i + 1) + ".png");
+        // Завантажуємо 16 кадрів з папки Enemies/Skeleton/
+        frames = new Texture[16];
+        for (int i = 0; i < 16; i++) {
+            String path = "Enemies/Skeleton/Skeleton" + (i + 1) + ".png";
+            if (!Gdx.files.internal(path).exists()) {
+                throw new RuntimeException("❌ Missing file: " + path);
+            }
+            frames[i] = new Texture(path);
         }
-        walkAnim = createAnimation(0, 5, 0.15f);   // Goblin1.png - Goblin5.png
-        attackAnim = createAnimation(5, 9, 0.12f); // Goblin6.png - Goblin9.png
-        deathAnim = createAnimation(9, 11, 0.25f); // Goblin10.png - Goblin11.png
+
+        walkAnim   = createAnimation(0, 6, 0.15f);  // Skeleton1-6.png
+        deathAnim  = createAnimation(6, 13, 0.25f); // Skeleton7-13.png
+        attackAnim = createAnimation(13, 16, 0.12f); // Skeleton14-16.png
     }
 
     private Animation<TextureRegion> createAnimation(int from, int to, float frameDuration) {
