@@ -9,13 +9,11 @@ import com.badlogic.gdx.utils.Disposable;
 public class SpiderAnimationManager implements Disposable {
     public enum State {
         WALK,
-        ATTACK,
-        DEATH
+        ATTACK
     }
 
     private final Animation<TextureRegion> walkAnim;
     private final Animation<TextureRegion> attackAnim;
-    private final Animation<TextureRegion> deathAnim;
 
     private float stateTime;
     private State currentState;
@@ -27,7 +25,7 @@ public class SpiderAnimationManager implements Disposable {
         stateTime = 0f;
         currentState = State.WALK;
 
-        frames = new Texture[8];
+        frames = new Texture[6]; // 3 walk + 3 attack
 
         for (int i = 0; i < frames.length; i++) {
             frames[i] = new Texture("Enemies/Spider/Spider" + (i + 1) + ".png");
@@ -35,7 +33,6 @@ public class SpiderAnimationManager implements Disposable {
 
         walkAnim   = createAnimation(0, 3, 0.15f);   // Spider1-3
         attackAnim = createAnimation(3, 6, 0.12f);   // Spider4-6
-        deathAnim  = createAnimation(6, 8, 0.2f);    // Spider7-8
     }
 
     private Animation<TextureRegion> createAnimation(int from, int to, float duration) {
@@ -61,10 +58,16 @@ public class SpiderAnimationManager implements Disposable {
             case ATTACK:
                 currentFrame = attackAnim.getKeyFrame(stateTime);
                 break;
-            case DEATH:
-                currentFrame = deathAnim.getKeyFrame(stateTime, false);
-                break;
         }
+    }
+
+    public void resetAttackAnim() {
+        stateTime = 0f;
+        currentState = State.ATTACK;
+    }
+
+    public boolean isAttackAnimationFinished() {
+        return attackAnim.isAnimationFinished(stateTime);
     }
 
     public TextureRegion getCurrentFrame() {

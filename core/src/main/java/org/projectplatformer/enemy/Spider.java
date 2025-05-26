@@ -36,6 +36,10 @@ public class Spider extends BaseEnemy {
     private final SpiderAnimationManager animationManager;
     private SpiderAnimationManager.State currentState;
 
+    private boolean isAttackAnimationPlaying = false;
+
+    private static final boolean SPRITE_LOOKS_RIGHT = false;
+
     public Spider(float x, float y) {
         super(
             x, y,
@@ -56,13 +60,18 @@ public class Spider extends BaseEnemy {
             ATTACK_DAMAGE
         );
         this.patrolStartX = x;
-
         this.animationManager = new SpiderAnimationManager();
         this.currentState = SpiderAnimationManager.State.WALK;
     }
 
     @Override
     public void update(float delta, Player player, List<Rectangle> platforms) {
+        if (isDeadAndGone()) return;
+        if (!isAlive()) {
+            setDeadAndGone();
+            return;
+        }
+
         Rectangle b = getBounds();
         float pivotX = b.x + b.width / 2f;
         float pivotY = b.y + b.height / 2f;
@@ -70,40 +79,56 @@ public class Spider extends BaseEnemy {
         spearWeapon.update(delta, pivotX, pivotY, facingRight);
 
         float playerCX = player.getBounds().x + player.getBounds().width / 2f;
+        float playerCY = player.getBounds().y + player.getBounds().height / 2f;
         float dx = playerCX - pivotX;
-        float dist2 = dx * dx;
+        float dy = playerCY - pivotY;
+        float dist2 = dx * dx + dy * dy;
+        boolean playerSameLevel = Math.abs(dy) < b.height * 1.2f;
 
-        if (!isAlive()) {
-            currentState = SpiderAnimationManager.State.DEATH;
-        } else if (spearWeapon.isAttacking()) {
-            currentState = SpiderAnimationManager.State.ATTACK;
-        } else {
-            currentState = SpiderAnimationManager.State.WALK;
-        }
-
-        animationManager.update(delta, currentState, facingRight);
-
-        if (dist2 <= ATTACK_RANGE * ATTACK_RANGE) {
-            physics.setVelocityX(0f);
-            if (spearWeapon.getCooldownRemaining() <= 0f) {
-                facingRight = dx > 0;
-                spearWeapon.startAttack(pivotX, pivotY, facingRight);
-            }
-        } else {
-            if (dist2 <= CHASE_RANGE * CHASE_RANGE) {
-                float dir = Math.signum(dx);
-                physics.setVelocityX(dir * MOVE_SPEED);
-                facingRight = dir > 0;
+        if (isAttackAnimationPlaying) {
+            if (animationManager.isAttackAnimationFinished()) {
+                isAttackAnimationPlaying = false;
+                currentState = SpiderAnimationManager.State.WALK;
             } else {
-                physics.setVelocityX(patrolDir * PATROL_SPEED);
-                if (b.x > patrolStartX + PATROL_RADIUS) patrolDir = -1f;
-                if (b.x < patrolStartX - PATROL_RADIUS) patrolDir = 1f;
-                facingRight = patrolDir > 0;
+                currentState = SpiderAnimationManager.State.ATTACK;
             }
+            animationManager.update(delta, currentState, facingRight);
+            spearWeapon.applyDamage(player);
+            physics.update(delta, platforms);
+            return;
         }
 
+        // --- Почати атаку, якщо дуже близько і cooldown закінчився ---
+        if (dist2 <= ATTACK_RANGE * ATTACK_RANGE && playerSameLevel && spearWeapon.getCooldownRemaining() <= 0f) {
+            isAttackAnimationPlaying = true;
+            animationManager.resetAttackAnim();
+            currentState = SpiderAnimationManager.State.ATTACK;
+            spearWeapon.startAttack(pivotX, pivotY, dx > 0);
+            facingRight = dx > 0;
+            animationManager.update(delta, currentState, facingRight);
+            spearWeapon.applyDamage(player);
+            physics.update(delta, platforms);
+            return;
+        }
+
+        // --- Звичайна логіка руху (AI) ---
+        if (dist2 <= CHASE_RANGE * CHASE_RANGE && playerSameLevel) {
+            float moveDir = Math.signum(dx);
+            physics.setVelocityX(moveDir * MOVE_SPEED);
+            facingRight = moveDir > 0;
+        } else {
+            if (b.x > patrolStartX + PATROL_RADIUS) patrolDir = -1f;
+            if (b.x < patrolStartX - PATROL_RADIUS) patrolDir = 1f;
+            float moveDir = patrolDir;
+            physics.setVelocityX(moveDir * PATROL_SPEED);
+            facingRight = patrolDir > 0;
+        }
+
+        currentState = SpiderAnimationManager.State.WALK;
+        animationManager.update(delta, currentState, facingRight);
         spearWeapon.applyDamage(player);
 
+        // Step up якщо треба
         if (physics.getVelocityX() != 0f) {
             physics.tryStepUp(platforms, physics.getVelocityX() > 0f);
         }
@@ -126,13 +151,14 @@ public class Spider extends BaseEnemy {
         }
 
         if (dist2 <= CHASE_RANGE * CHASE_RANGE) {
-            float dir = Math.signum(dx);
-            physics.setVelocityX(dir * MOVE_SPEED);
-            facingRight = dir > 0;
+            float moveDir = Math.signum(dx);
+            physics.setVelocityX(moveDir * MOVE_SPEED);
+            facingRight = moveDir > 0;
         } else {
-            physics.setVelocityX(patrolDir * PATROL_SPEED);
             if (b.x > patrolStartX + PATROL_RADIUS) patrolDir = -1f;
             if (b.x < patrolStartX - PATROL_RADIUS) patrolDir = 1f;
+            float moveDir = patrolDir;
+            physics.setVelocityX(moveDir * PATROL_SPEED);
             facingRight = patrolDir > 0;
         }
 
@@ -168,19 +194,21 @@ public class Spider extends BaseEnemy {
 
     @Override
     public void render(SpriteBatch batch) {
-        if (!isAlive()) return;
+        if (isDeadAndGone()) return;
         Rectangle b = getBounds();
         TextureRegion frame = animationManager.getCurrentFrame();
 
-        if (facingRight) {
-            batch.draw(frame, b.x, b.y, b.width, b.height);
-        } else {
+        boolean flip = facingRight != SPRITE_LOOKS_RIGHT;
+        if (flip) {
             batch.draw(frame, b.x + b.width, b.y, -b.width, b.height);
+        } else {
+            batch.draw(frame, b.x, b.y, b.width, b.height);
         }
     }
 
     @Override
     public void renderHitbox(ShapeRenderer r) {
+        if (isDeadAndGone()) return;
         super.renderHitbox(r);
         Rectangle hb = spearWeapon.getHitbox();
         if (hb != null) {

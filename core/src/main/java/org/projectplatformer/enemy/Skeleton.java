@@ -1,10 +1,9 @@
 package org.projectplatformer.enemy;
 
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Rectangle;
-import com.badlogic.gdx.graphics.g2d.TextureRegion;
-
 import org.projectplatformer.EnemiesAnimation.SkeletonAnimationManager;
 import org.projectplatformer.player.Player;
 import org.projectplatformer.weapon.SwordWeapon;
@@ -32,6 +31,12 @@ public class Skeleton extends BaseEnemy {
     private final SkeletonAnimationManager animationManager;
     private SkeletonAnimationManager.State currentState;
 
+    private boolean isAttackAnimationPlaying = false;
+    private boolean deathAnimationStarted = false;
+
+    // Якщо спрайт дивиться ВЛІВО — false, вправо — true
+    private static final boolean SPRITE_LOOKS_RIGHT = false;
+
     public Skeleton(float x, float y) {
         super(
             x, y,
@@ -57,10 +62,28 @@ public class Skeleton extends BaseEnemy {
 
     @Override
     public void update(float delta, Player player, List<Rectangle> platforms) {
+        if (isDeadAndGone()) return;
+
         Rectangle b = getBounds();
         float pivotX = b.x + b.width / 2f;
         float pivotY = b.y + b.height * 0.7f;
 
+        // --- Анімація смерті ---
+        if (!isAlive()) {
+            currentState = SkeletonAnimationManager.State.DEATH;
+            if (!deathAnimationStarted) {
+                animationManager.resetDeathAnim();
+                deathAnimationStarted = true;
+            }
+            animationManager.update(delta, currentState, facingRight);
+            if (animationManager.isDeathAnimationFinished()) {
+                setDeadAndGone();
+            }
+            return;
+        }
+        deathAnimationStarted = false;
+
+        // --- Атака: працює як у гобліна! ---
         slashWeapon.update(delta, pivotX, pivotY, facingRight);
 
         float playerCX = player.getBounds().x + player.getBounds().width / 2f;
@@ -68,35 +91,46 @@ public class Skeleton extends BaseEnemy {
         boolean isInAttackRange = dx * dx <= MELEE_RANGE * MELEE_RANGE;
         boolean canAttack = slashWeapon.getCooldownRemaining() <= 0f;
 
-        // Визначаємо стан анімації
-        if (!isAlive()) {
-            currentState = SkeletonAnimationManager.State.DEATH;
-        } else if (slashWeapon.isAttacking()) {
-            currentState = SkeletonAnimationManager.State.ATTACK;
-        } else {
-            currentState = Math.abs(physics.getVelocityX()) > 0.1f
-                ? SkeletonAnimationManager.State.WALK
-                : SkeletonAnimationManager.State.WALK;
+        if (isAttackAnimationPlaying) {
+            if (animationManager.isAttackAnimationFinished()) {
+                isAttackAnimationPlaying = false;
+                currentState = SkeletonAnimationManager.State.WALK;
+            } else {
+                currentState = SkeletonAnimationManager.State.ATTACK;
+            }
+            animationManager.update(delta, currentState, facingRight);
+            slashWeapon.applyDamage(player);
+            physics.update(delta, platforms); // тільки фізика (гравітація)
+            return;
         }
+
+        // Почати атаку?
+        if (isInAttackRange && canAttack) {
+            isAttackAnimationPlaying = true;
+            animationManager.resetAttackAnim();
+            currentState = SkeletonAnimationManager.State.ATTACK;
+            slashWeapon.startAttack(pivotX, pivotY, facingRight);
+            animationManager.update(delta, currentState, facingRight);
+            slashWeapon.applyDamage(player);
+            physics.update(delta, platforms);
+            return;
+        }
+
+        // --- AI-рух, WALK ---
+        currentState = Math.abs(physics.getVelocityX()) > 0.1f
+            ? SkeletonAnimationManager.State.WALK
+            : SkeletonAnimationManager.State.WALK;
 
         animationManager.update(delta, currentState, facingRight);
-
-        if (isInAttackRange && canAttack && isAlive()) {
-            slashWeapon.startAttack(pivotX, pivotY, facingRight);
-        }
-
-        if (isAlive()) {
-            slashWeapon.applyDamage(player);
-        }
+        slashWeapon.applyDamage(player);
 
         super.update(delta, player, platforms);
     }
 
     @Override
     protected void aiMove(float delta, Player player, List<Rectangle> platforms) {
-        if (!isAlive()) return;
-
         Rectangle b = getBounds();
+
         float belowX = b.x + b.width / 2f;
         boolean hasGround = false;
         for (Rectangle p : platforms) {
@@ -117,6 +151,7 @@ public class Skeleton extends BaseEnemy {
         float dx = playerCX - cx;
         float dist2 = dx * dx;
 
+        // --- AI для погоні та патруля ---
         if (dist2 <= MELEE_RANGE * MELEE_RANGE) {
             physics.setVelocityX(0f);
             return;
@@ -130,12 +165,15 @@ public class Skeleton extends BaseEnemy {
             speed = CHASE_SPEED;
             facingRight = moveDir > 0;
         } else {
-            moveDir = patrolDir;
-            speed = PATROL_SPEED;
+            // --- Зміна напрямку якщо дійшов до краю патруля ---
             if (b.x > patrolCenterX + PATROL_RADIUS) patrolDir = -1f;
             if (b.x < patrolCenterX - PATROL_RADIUS) patrolDir = 1f;
+            moveDir = patrolDir;
+            speed = PATROL_SPEED;
             facingRight = patrolDir > 0;
         }
+
+        // step-up, jump логіка залишаєш свою як була
 
         float aheadX = facingRight ? b.x + b.width + 2f : b.x - 2f;
         Rectangle probe = new Rectangle(aheadX, b.y, 2f, b.height);
@@ -173,18 +211,22 @@ public class Skeleton extends BaseEnemy {
 
     @Override
     public void render(SpriteBatch batch) {
+        if (isDeadAndGone()) return;
         Rectangle b = getBounds();
         TextureRegion frame = animationManager.getCurrentFrame();
 
-        if (facingRight) {
-            batch.draw(frame, b.x, b.y, b.width, b.height);
-        } else {
+        boolean flip = facingRight != SPRITE_LOOKS_RIGHT;
+        if (flip) {
             batch.draw(frame, b.x + b.width, b.y, -b.width, b.height);
+        } else {
+            batch.draw(frame, b.x, b.y, b.width, b.height);
         }
     }
 
     @Override
     public void renderHitbox(ShapeRenderer r) {
+        if (isDeadAndGone()) return;
+
         super.renderHitbox(r);
         Rectangle hb = slashWeapon.getHitbox();
         if (hb != null) {

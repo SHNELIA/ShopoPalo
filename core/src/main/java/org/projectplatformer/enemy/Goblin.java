@@ -34,7 +34,6 @@ public class Goblin extends BaseEnemy {
     private boolean isAttackAnimationPlaying = false;
     private boolean deathAnimationStarted = false;
 
-    // Якщо спрайт дивиться ВЛІВО (OpenGameArt, itch.io) — false. Якщо вправо — true.
     private static final boolean SPRITE_LOOKS_RIGHT = false;
 
     public Goblin(float x, float y) {
@@ -83,8 +82,6 @@ public class Goblin extends BaseEnemy {
             }
             return;
         }
-        // Якщо воскресне (наприклад, через дебаг), скидаємо прапорець
-        deathAnimationStarted = false;
 
         // --- Звичайна логіка (живий гоблін) ---
         slashWeapon.update(delta, pivotX, pivotY, facingRight);
