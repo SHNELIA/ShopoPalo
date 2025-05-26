@@ -60,7 +60,7 @@ The fate of the realm is yours to write down.
 
 ## 📜 Credits
 
-**🎼 Game UI & Sound:** Tsaprylova Iyryna
+**🎼 Game UI & Sound:** Tsaprylova Irina
 
 **🤴🏽 Player graphics & Animations:** Horyslavets Kateryna
 
