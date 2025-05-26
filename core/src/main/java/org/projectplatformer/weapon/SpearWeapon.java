@@ -1,121 +1,137 @@
 package org.projectplatformer.weapon;
 
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Rectangle;
 import org.projectplatformer.enemy.BaseEnemy;
 import org.projectplatformer.player.Player;
 
-import java.util.HashSet;
 import java.util.List;
 
 /**
- * Спис: пряма колюча атака вперед із поступовим висуванням.
+ * Спис: управляє прямою «уколом» вперед та поступовим висуванням,
+ * а також кулдауном і хітбоксом.
  */
 public class SpearWeapon implements Weapon {
-    private static final float MAX_LENGTH       = 80f;
-    private static final float WIDTH            =   8f;
-    private static final float DEFAULT_DURATION =   0.4f;
-    private static final float DEFAULT_COOLDOWN =   1.0f;
-    public  static final int   DAMAGE           =  35;
+    private final float maxLength;     // до якої довжини висувається спис
+    private final float width;         // товщина (ширина) хітбоксу
+    private final float duration;      // скільки триває анімація (секунд)
+    private final float cooldown;      // час між ударами
+    private final int   damage;        // шкода за один укол
 
-    // attack & cooldown timers
-    private float timer           = 0f;
-    private float cooldownTimer   = 0f;
-    private final float duration;
-    private final float cooldown;
+    private float timer         = 0f;
+    private float cooldownTimer = 0f;
+    private boolean damageDone  = false;
 
-    // keeps track of who we've already hit in this thrust
-    private final HashSet<BaseEnemy> damagedThisThrust = new HashSet<>();
-
-    // the current hitbox
     private final Rectangle hitbox = new Rectangle();
 
-    // last pivot & facing for hitbox recomputation
+    // останні дані для грамотного трасування
     private float   pivotX, pivotY;
     private boolean facingRight;
 
-    /** default ctor */
-    public SpearWeapon() {
-        this(DEFAULT_DURATION, DEFAULT_COOLDOWN);
+    /**
+     * @param maxLength  макс. довжина висування списа
+     * @param width      товщина хітбоксу
+     * @param duration   тривалість анімації в секундах
+     * @param cooldown   кулдаун між ударами в секундах
+     * @param damage     шкода одного уколу
+     */
+    public SpearWeapon(float maxLength, float width, float duration, float cooldown, int damage) {
+        this.maxLength = maxLength;
+        this.width     = width;
+        this.duration  = duration;
+        this.cooldown  = cooldown;
+        this.damage    = damage;
     }
 
-    /** ctor with custom timing */
-    public SpearWeapon(float duration, float cooldown) {
-        this.duration = duration;
-        this.cooldown = cooldown;
-    }
-
-    @Override
-    public void startAttack(float pivotX, float pivotY, boolean facingRight) {
-        if (cooldownTimer > 0f) return;
-
-        this.timer         = duration;
-        this.cooldownTimer = cooldown;
-        this.pivotX        = pivotX;
-        this.pivotY        = pivotY;
-        this.facingRight   = facingRight;
-        damagedThisThrust.clear();
-
-        // build initial hitbox (length = 0 at start)
-        hitbox.set(pivotX, pivotY - WIDTH/2f, 0f, WIDTH);
-    }
-
+    /** Оновлює таймери та (якщо атакуємо) будує хітбокс */
     @Override
     public void update(float delta, float pivotX, float pivotY, boolean facingRight) {
         this.pivotX      = pivotX;
         this.pivotY      = pivotY;
         this.facingRight = facingRight;
 
-        // tick timers
+        // зменшуємо таймери
         timer         = Math.max(0f, timer - delta);
         cooldownTimer = Math.max(0f, cooldownTimer - delta);
 
-        // if we're still in the attack window, grow the spear outwards
         if (timer > 0f) {
-            float progress = 1f - (timer / duration);  // 0 → 1 over the swing
-            float length   = MAX_LENGTH * progress;
-
-            float x = facingRight
-                ? pivotX
-                : pivotX - length;
-            float y = pivotY - WIDTH/2f;
-            hitbox.set(x, y, length, WIDTH);
+            // прогрес анімації 0→1
+            float t = 1f - (timer / duration);
+            // лінійно висуваємо спис вперед від 0 до maxLength
+            float lengthNow = t * maxLength;
+            // положення бази хітбоксу (центру списа)
+            float cx = pivotX + (facingRight ? lengthNow : -lengthNow);
+            float cy = pivotY;
+            // хітбокс — прямокутник width×width навколо точки (cx, cy)
+            hitbox.set(
+                cx - (width/2f),
+                cy - (width/2f),
+                width,
+                width
+            );
         } else {
-            // attack finished: clear hitbox
+            // атака завершена — «ховаємо» хітбокс
             hitbox.set(0,0,0,0);
         }
     }
 
+    /** Якщо атакуємо (timer>0) — повертає хітбокс, інакше null */
     @Override
     public Rectangle getHitbox() {
         return timer > 0f ? hitbox : null;
     }
 
+    /** Починаємо атаку, якщо кулдаун сплив */
+    public void startAttack(float pivotX, float pivotY, boolean facingRight) {
+        if (cooldownTimer > 0f) return;
+        this.pivotX        = pivotX;
+        this.pivotY        = pivotY;
+        this.facingRight   = facingRight;
+        this.timer         = duration;
+        this.cooldownTimer = cooldown;
+        this.damageDone    = false;
+        // «сховаємо» старий хітбокс до першого апдейту
+        hitbox.set(0,0,0,0);
+    }
+
+    /** Шкода ворогам — лише один раз за удар */
     @Override
     public void applyDamage(List<BaseEnemy> enemies) {
-        if (timer <= 0f) return;
-
-        // only damage each enemy once per thrust
+        if (timer <= 0f || damageDone) return;
         for (BaseEnemy e : enemies) {
-            if (e.isAlive() &&
-                hitbox.overlaps(e.getBounds()) &&
-                damagedThisThrust.add(e))
-            {
-                e.takeDamage(DAMAGE);
+            if (e.isAlive() && hitbox.overlaps(e.getBounds())) {
+                e.takeDamage(damage);
+                damageDone = true;
+                break;
             }
         }
     }
 
+    /** Шкода гравцю — лише один раз за удар */
     @Override
     public void applyDamage(Player player) {
-        // typically unused for the player's own weapon,
-        // but we provide it to satisfy the interface:
-        if (timer > 0f && hitbox.overlaps(player.getBounds())) {
-            player.takeDamage(DAMAGE);
+        if (timer <= 0f || damageDone) return;
+        if (hitbox.overlaps(player.getBounds())) {
+            player.takeDamage(damage);
+            damageDone = true;
         }
     }
 
-    @Override
+    /** Ваш інтерфейс Weapon не мав цього методу, але вам потрібен доступ до кулдауну */
     public float getCooldownRemaining() {
         return cooldownTimer;
+    }
+
+    public boolean isAttacking() {
+        return timer > 0f;
+    }
+
+    /** Додатково — щоб малювати трасу руху (якщо треба) */
+    public void renderTrajectory(ShapeRenderer r) {
+        if (timer <= 0f) return;
+        r.setColor(0f,1f,1f,1f);
+        float angle = facingRight ? 0f : 180f;
+        r.arc(pivotX, pivotY, maxLength, angle - 10f, 20f);
     }
 }
