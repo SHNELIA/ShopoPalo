@@ -3,10 +3,10 @@ package org.projectplatformer.EnemiesAnimation;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
-import com.badlogic.gdx.utils.Disposable;
 import com.badlogic.gdx.utils.Array;
+import com.badlogic.gdx.utils.Disposable;
 
-public class GoblinAnimationManager implements Disposable {
+public class SkeletonAnimationManager implements Disposable {
     public enum State {
         WALK,
         ATTACK,
@@ -19,23 +19,22 @@ public class GoblinAnimationManager implements Disposable {
 
     private float stateTime;
     private State currentState;
-
     private TextureRegion currentFrame;
 
     private final Texture[] frames;
 
-    public GoblinAnimationManager() {
+    public SkeletonAnimationManager() {
         stateTime = 0f;
         currentState = State.WALK;
 
-        frames = new Texture[11];
-        for (int i = 0; i < 11; i++) {
-            // ПРАВИЛЬНО
-            frames[i] = new Texture("Enemies/Goblin/Goblin" + (i + 1) + ".png");
+        frames = new Texture[6];
+        for (int i = 1; i < 16; i++) {
+            frames[i] = new Texture("Enemies/Skeleton" + (i + 1) + ".png");
         }
-        walkAnim = createAnimation(0, 5, 0.15f);   // Goblin1.png - Goblin5.png
-        attackAnim = createAnimation(5, 9, 0.12f); // Goblin6.png - Goblin9.png
-        deathAnim = createAnimation(9, 11, 0.25f); // Goblin10.png - Goblin11.png
+
+        walkAnim = createAnimation(1, 6, 0.15f);
+        attackAnim = createAnimation(14, 16, 0.12f);
+        deathAnim = createAnimation(6, 13, 0.25f);
     }
 
     private Animation<TextureRegion> createAnimation(int from, int to, float frameDuration) {

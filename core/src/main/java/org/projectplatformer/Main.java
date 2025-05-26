@@ -43,8 +43,8 @@ public class Main extends ApplicationAdapter {
 
     private static final String IMAGES_PATH = "Levels/Images/";
     private static final String MAPS_PATH   = "Levels/Maps/";
-    private static final String GOBLIN_PATH = "Enemies/Goblin/Walk/";
-    private static final String SPIDER_PATH = "Enemies/Spider/Walk/";
+    private static final String GOBLIN_PATH = "Enemies/Goblin/";
+    private static final String SPIDER_PATH = "Enemies/Spider/";
     private final List<String> levelPaths = Arrays.asList(MAPS_PATH + "Level1.tmx");
     private int currentLevelIndex = 0;
 
