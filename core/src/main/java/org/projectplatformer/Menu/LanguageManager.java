@@ -81,13 +81,10 @@ public class LanguageManager {
         return english.getOrDefault(key, "KEY_NOT_FOUND");
     }
 
-    // This method name is more accurate for returning the language code
     public static String getCurrentLanguageCode() {
         return "en"; // Currently only English is supported
     }
 
-    // This method remains a no-op as per previous discussions (only English supported)
     public static void setLanguage(String langCode) {
-        // No-op for now, as only English is implemented
     }
 }

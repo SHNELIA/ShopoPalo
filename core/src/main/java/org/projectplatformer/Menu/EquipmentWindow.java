@@ -11,8 +11,7 @@ import java.awt.event.MouseEvent;
 import java.io.IOException;
 import java.io.InputStream;
 import javax.imageio.ImageIO;
-import java.util.ArrayList;
-import java.util.List;
+
 
 public class EquipmentWindow extends JDialog {
 
@@ -54,8 +53,7 @@ public class EquipmentWindow extends JDialog {
         FONT_ITEM_NAME_BASE = new Font("Arial", Font.BOLD, 18);
 
         try {
-            // Load Spear Image - CORRECTED PATH
-            String spearImagePath = "/Spear equipped.png"; // Changed from "/images/Spear equipped.png"
+            String spearImagePath = "/Spear equipped.png";
             InputStream spearIs = EquipmentWindow.class.getResourceAsStream(spearImagePath);
             if (spearIs != null) {
                 SPEAR_IMAGE_BASE = new ImageIcon(ImageIO.read(spearIs)).getImage();
@@ -65,8 +63,7 @@ public class EquipmentWindow extends JDialog {
                 System.err.println("Spear image not found: " + spearImagePath);
             }
 
-            // Load Bow Image - CORRECTED PATH
-            String bowImagePath = "/Bow equipped.png"; // Changed from "/images/Bow equipped.png"
+            String bowImagePath = "/Bow equipped.png";
             InputStream bowIs = EquipmentWindow.class.getResourceAsStream(bowImagePath);
             if (bowIs != null) {
                 BOW_IMAGE_BASE = new ImageIcon(ImageIO.read(bowIs)).getImage();
@@ -76,8 +73,7 @@ public class EquipmentWindow extends JDialog {
                 System.err.println("Bow image not found: " + bowImagePath);
             }
 
-            // NEW: Load Sword Image - CORRECTED PATH
-            String swordImagePath = "/Sword equipped1.png"; // Changed from "/images/Sword equipped1.png"
+            String swordImagePath = "/Sword equipped1.png";
             InputStream swordIs = EquipmentWindow.class.getResourceAsStream(swordImagePath);
             if (swordIs != null) {
                 SWORD_IMAGE_BASE = new ImageIcon(ImageIO.read(swordIs)).getImage();
@@ -113,7 +109,7 @@ public class EquipmentWindow extends JDialog {
     private JTextArea swordStatsTextArea;
 
     private JPanel meleePanel;
-    private JLabel meleePlaceholder; // This will now be replaced by the sword display
+    private JLabel meleePlaceholder;
 
     public EquipmentWindow(GameWorldWindow parent) {
         super(parent, LanguageManager.get("equipmentWindow_title"), true);
@@ -143,7 +139,6 @@ public class EquipmentWindow extends JDialog {
         JPanel contentPanel = new JPanel(new GridLayout(1, 2, 30, 0));
         contentPanel.setOpaque(false);
 
-        // Ranged Weapons Section
         JPanel rangedPanel = new JPanel(new BorderLayout(10, 10));
         rangedPanel.setOpaque(false);
         rangedPanel.setBorder(new LineBorder(FANTASY_BORDER_COLOR, 3, true));
@@ -161,7 +156,6 @@ public class EquipmentWindow extends JDialog {
         rangedItemsListPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
 
 
-        // --- Spear Item Display Block ---
         JPanel spearDisplayPanel = new JPanel(new GridBagLayout());
         spearDisplayPanel.setOpaque(false);
         spearDisplayPanel.setBorder(new EmptyBorder(10, 0, 10, 0));
@@ -203,7 +197,6 @@ public class EquipmentWindow extends JDialog {
         rangedItemsListPanel.add(spearDisplayPanel);
         rangedItemsListPanel.add(Box.createVerticalStrut(15));
 
-        // --- Bow Item Display Block ---
         JPanel bowDisplayPanel = new JPanel(new GridBagLayout());
         bowDisplayPanel.setOpaque(false);
         bowDisplayPanel.setBorder(new EmptyBorder(10, 0, 10, 0));
@@ -255,7 +248,6 @@ public class EquipmentWindow extends JDialog {
 
         contentPanel.add(rangedPanel);
 
-        // Melee Weapons Section (MODIFIED to add Sword display)
         meleePanel = new JPanel(new BorderLayout(10, 10));
         meleePanel.setOpaque(false);
         meleePanel.setBorder(new LineBorder(FANTASY_BORDER_COLOR, 3, true));
@@ -267,18 +259,16 @@ public class EquipmentWindow extends JDialog {
         meleeWeaponsTitle.setBorder(new EmptyBorder(15, 0, 15, 0));
         meleePanel.add(meleeWeaponsTitle, BorderLayout.NORTH);
 
-        // NEW: Panel to hold melee items vertically
         JPanel meleeItemsListPanel = new JPanel();
         meleeItemsListPanel.setLayout(new BoxLayout(meleeItemsListPanel, BoxLayout.Y_AXIS));
         meleeItemsListPanel.setOpaque(false);
         meleeItemsListPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
 
-        // --- Sword Item Display Block ---
         JPanel swordDisplayPanel = new JPanel(new GridBagLayout());
         swordDisplayPanel.setOpaque(false);
-        swordDisplayPanel.setBorder(new EmptyBorder(10, 0, 10, 0)); // Padding for this specific item
+        swordDisplayPanel.setBorder(new EmptyBorder(10, 0, 10, 0));
 
-        GridBagConstraints gbcSwordDisplay = new GridBagConstraints(); // Renamed to avoid conflict
+        GridBagConstraints gbcSwordDisplay = new GridBagConstraints();
         gbcSwordDisplay.insets = new Insets(5, 5, 5, 5);
         gbcSwordDisplay.fill = GridBagConstraints.HORIZONTAL;
 
@@ -313,19 +303,16 @@ public class EquipmentWindow extends JDialog {
         swordDisplayPanel.add(swordStatsScrollPane, gbcSwordDisplay);
 
         meleeItemsListPanel.add(swordDisplayPanel);
-        // meleeItemsListPanel.add(Box.createVerticalStrut(15)); // Add separator if more items are planned
 
-        // Add meleeItemsListPanel to a JScrollPane (optional, if you want it to scroll)
         JScrollPane meleeScrollPane = new JScrollPane(meleeItemsListPanel);
         meleeScrollPane.setOpaque(false);
         meleeScrollPane.getViewport().setOpaque(false);
         meleeScrollPane.setBorder(BorderFactory.createEmptyBorder());
         meleeScrollPane.getViewport().setBackground(FANTASY_BROWN_LEATHER.darker().darker());
-        meleeScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER); // Hide scrollbar for now
-        meleeScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER); // Hide scrollbar for now
+        meleeScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER);
+        meleeScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
 
-        meleePanel.add(meleeScrollPane, BorderLayout.CENTER); // Add the scroll pane to the melee panel
-
+        meleePanel.add(meleeScrollPane, BorderLayout.CENTER);
 
         contentPanel.add(meleePanel);
 
@@ -358,7 +345,6 @@ public class EquipmentWindow extends JDialog {
         rangedWeaponsTitle.setFont(FONT_SECTION_TITLE_BASE.deriveFont((float) (FONT_SECTION_TITLE_BASE.getSize2D() * overallScale)));
         meleeWeaponsTitle.setFont(FONT_SECTION_TITLE_BASE.deriveFont((float) (FONT_SECTION_TITLE_BASE.getSize2D() * overallScale)));
 
-        // Update sizes for Spear components
         if (SPEAR_IMAGE_BASE != null) {
             int targetImageSize = (int) (ITEM_IMAGE_BASE_SIZE * overallScale);
             Image scaledImage = SPEAR_IMAGE_BASE.getScaledInstance(targetImageSize, targetImageSize, Image.SCALE_SMOOTH);
@@ -367,7 +353,6 @@ public class EquipmentWindow extends JDialog {
         spearNameLabel.setFont(FONT_ITEM_NAME_BASE.deriveFont((float) (FONT_ITEM_NAME_BASE.getSize2D() * overallScale)));
         spearStatsTextArea.setFont(FONT_ITEM_TEXT_BASE.deriveFont((float) (FONT_ITEM_TEXT_BASE.getSize2D() * overallScale)));
 
-        // Update sizes for Bow components
         if (BOW_IMAGE_BASE != null) {
             int targetImageSize = (int) (ITEM_IMAGE_BASE_SIZE * overallScale);
             Image scaledImage = BOW_IMAGE_BASE.getScaledInstance(targetImageSize, targetImageSize, Image.SCALE_SMOOTH);
@@ -376,7 +361,6 @@ public class EquipmentWindow extends JDialog {
         bowNameLabel.setFont(FONT_ITEM_NAME_BASE.deriveFont((float) (FONT_ITEM_NAME_BASE.getSize2D() * overallScale)));
         bowStatsTextArea.setFont(FONT_ITEM_TEXT_BASE.deriveFont((float) (FONT_ITEM_TEXT_BASE.getSize2D() * overallScale)));
 
-        // NEW: Update sizes for Sword components
         if (SWORD_IMAGE_BASE != null) {
             int targetImageSize = (int) (ITEM_IMAGE_BASE_SIZE * overallScale);
             Image scaledImage = SWORD_IMAGE_BASE.getScaledInstance(targetImageSize, targetImageSize, Image.SCALE_SMOOTH);
@@ -385,12 +369,6 @@ public class EquipmentWindow extends JDialog {
         swordNameLabel.setFont(FONT_ITEM_NAME_BASE.deriveFont((float) (FONT_ITEM_NAME_BASE.getSize2D() * overallScale)));
         swordStatsTextArea.setFont(FONT_ITEM_TEXT_BASE.deriveFont((float) (FONT_ITEM_TEXT_BASE.getSize2D() * overallScale)));
 
-
-        // meleePlaceholder is no longer directly added, so no need to update its font here unless re-added
-        // If you plan to add the placeholder back for empty slots, uncomment and adjust:
-        // if (meleePlaceholder != null) {
-        //     meleePlaceholder.setFont(FONT_ITEM_TEXT_BASE.deriveFont((float) (FONT_ITEM_TEXT_BASE.getSize2D() * overallScale)));
-        // }
 
         Font currentButtonFont = FONT_BUTTON_BASE.deriveFont((float) (FONT_BUTTON_BASE.getSize2D() * overallScale * 0.8));
         backButton.setFont(currentButtonFont);

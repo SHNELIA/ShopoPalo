@@ -46,13 +46,13 @@ public class GameMenu extends JFrame implements ActionListener, ComponentListene
     private static final Color FANTASY_TEXT_DARK = new Color(30, 30, 30);
     private static final Color FANTASY_BORDER_COLOR = new Color(40, 30, 10);
 
-    // Кольори для кнопок стану (Music/Sounds)
+    // Colors (Music/Sounds)
     private static final Color BUTTON_ON_COLOR = new Color(70, 120, 70);
     private static final Color BUTTON_OFF_COLOR = new Color(120, 70, 70);
     private static final Color BUTTON_HOVER_COLOR_LIGHT = new Color(130, 95, 50);
     private static final Color BUTTON_PRESSED_COLOR_DARK = new Color(70, 45, 15);
 
-    // Базові розміри для масштабування
+    // Basic dimensions for scaling
     private static final int BASE_WIDTH = 1024;
     private static final int BASE_HEIGHT = 768;
     private static final int DIALOG_BASE_WIDTH = 500;
@@ -66,33 +66,9 @@ public class GameMenu extends JFrame implements ActionListener, ComponentListene
     private static Font FONT_DIALOG_TEXT_BASE;
 
     static {
-        // !!!!!!!!! ВАЖЛИВО !!!!!!!!!
-        // Якщо ви використовуєте власний шрифт, переконайтеся, що файл шрифту
-        // коректно розміщений у resources/fonts/MinecraftEven.ttf та доступний.
-        // Закоментований блок показує, як це зробити.
-        // Якщо шрифт не завантажується, буде використано Arial як запасний.
+
         try {
-            // InputStream is = GameMenu.class.getResourceAsStream("/fonts/MinecraftEven.ttf");
-            // if (is != null) {
-            //     Font minecraftEven = Font.createFont(Font.TRUETYPE_FONT, is);
-            //     GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
-            //     ge.registerFont(minecraftEven);
-            //     FONT_MAIN_TITLE_BASE = minecraftEven.deriveFont(Font.BOLD, 60f);
-            //     FONT_BUTTON_LARGE_BASE = minecraftEven.deriveFont(Font.BOLD, 28f);
-            //     FONT_BUTTON_SMALL_BASE = minecraftEven.deriveFont(Font.BOLD, 14f);
-            //     FONT_MADE_BY_BASE = minecraftEven.deriveFont(Font.PLAIN, 14f);
-            //     FONT_DIALOG_TITLE_BASE = minecraftEven.deriveFont(Font.BOLD, 36f);
-            //     FONT_DIALOG_TEXT_BASE = minecraftEven.deriveFont(Font.PLAIN, 18f);
-            // } else {
-            //     System.err.println("Font 'MinecraftEven.ttf' not found. Using Arial.");
-            //     FONT_MAIN_TITLE_BASE = new Font("Arial", Font.BOLD, 60);
-            //     FONT_BUTTON_LARGE_BASE = new Font("Arial", Font.BOLD, 28);
-            //     FONT_BUTTON_SMALL_BASE = new Font("Arial", Font.BOLD, 14);
-            //     FONT_MADE_BY_BASE = new Font("Arial", Font.PLAIN, 14);
-            //     FONT_DIALOG_TITLE_BASE = new Font("Arial", Font.BOLD, 36);
-            //     FONT_DIALOG_TEXT_BASE = new Font("Arial", Font.PLAIN, 18);
-            // }
-            // Якщо ви не використовуєте спеціальні шрифти, просто залиште Arial:
+
             FONT_MAIN_TITLE_BASE = new Font("Arial", Font.BOLD, 60);
             FONT_BUTTON_LARGE_BASE = new Font("Arial", Font.BOLD, 28);
             FONT_BUTTON_SMALL_BASE = new Font("Arial", Font.BOLD, 14);
@@ -113,24 +89,22 @@ public class GameMenu extends JFrame implements ActionListener, ComponentListene
 
 
     public GameMenu() {
-        // Main window setup
+
         setTitle(LanguageManager.get("title") + " - Menu");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setPreferredSize(new Dimension(BASE_WIDTH, BASE_HEIGHT));
 
-        // Додаємо ComponentListener до вікна
         addComponentListener(this);
 
         JPanel mainPanel = new JPanel(new BorderLayout(30, 20));
         mainPanel.setBackground(FANTASY_DARK_WOOD);
         mainPanel.setBorder(new EmptyBorder(40, 60, 30, 60));
-        // Game title
+
         titleLabel = new JLabel(LanguageManager.get("title"), SwingConstants.CENTER);
         titleLabel.setForeground(FANTASY_BRONZE);
         titleLabel.setBorder(new EmptyBorder(10, 0, 40, 0));
         mainPanel.add(titleLabel, BorderLayout.NORTH);
 
-        // Main buttons panel
         JPanel buttonsContainerPanel = new JPanel(new GridBagLayout());
         buttonsContainerPanel.setOpaque(false);
 
@@ -147,7 +121,6 @@ public class GameMenu extends JFrame implements ActionListener, ComponentListene
         settingsButton = createFantasyButton(LanguageManager.get("settingsButton"), FANTASY_BROWN_LEATHER, FONT_BUTTON_LARGE_BASE);
         quitButton = createFantasyButton(LanguageManager.get("quitButton"), FANTASY_BROWN_LEATHER, FONT_BUTTON_LARGE_BASE);
 
-        // Add action listeners
         playButton.addActionListener(this);
         guideButton.addActionListener(this);
         settingsButton.addActionListener(this);
@@ -173,7 +146,7 @@ public class GameMenu extends JFrame implements ActionListener, ComponentListene
         mainPanel.add(buttonsContainerPanel, BorderLayout.CENTER);
 
 
-        // Bottom panel - Використовуємо BorderLayout для контролю
+        // Bottom panel
         JPanel bottomPanel = new JPanel(new BorderLayout(30, 10));
         bottomPanel.setOpaque(false);
         bottomPanel.setBorder(new EmptyBorder(10, 20, 10, 20));
@@ -188,7 +161,6 @@ public class GameMenu extends JFrame implements ActionListener, ComponentListene
             AudioManager.isSoundsEnabled() ? BUTTON_ON_COLOR : BUTTON_OFF_COLOR,
             FONT_BUTTON_SMALL_BASE);
 
-        // Встановлюємо розміри для малих кнопок
         Dimension toggleSize = new Dimension(160, 40);
         musicButton.setPreferredSize(toggleSize);
         musicButton.setMinimumSize(new Dimension(80, 30));
@@ -206,7 +178,6 @@ public class GameMenu extends JFrame implements ActionListener, ComponentListene
         soundTogglePanel.add(soundButton);
         bottomPanel.add(soundTogglePanel, BorderLayout.WEST);
 
-        // MADE BY LABEL - Тепер з HTML-форматуванням
         JPanel madeByPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
         madeByPanel.setOpaque(false);
         madeByLabel = new JLabel("<html><div style='text-align: right;'>Made by: <br>Shpuniar Nazar<br>Revenko Anna<br>Burma Sofia<br>Horyslavets Kateryna<br>Tsaprylova Irina</div></html>", SwingConstants.RIGHT);
@@ -220,11 +191,9 @@ public class GameMenu extends JFrame implements ActionListener, ComponentListene
         pack();
         setLocationRelativeTo(null);
 
-        // Початкове оновлення розмірів компонентів
         updateMenuComponentSizes();
     }
 
-    // Метод для динамічного оновлення розмірів компонентів головного меню та діалогу
     public void updateMenuComponentSizes() {
         int currentWidth = getWidth();
         int currentHeight = getHeight();
@@ -233,17 +202,14 @@ public class GameMenu extends JFrame implements ActionListener, ComponentListene
         double scaleY = (double) currentHeight / BASE_HEIGHT;
         double overallScale = Math.min(scaleX, scaleY);
 
-        // Оновлення заголовка головного меню
         titleLabel.setFont(FONT_MAIN_TITLE_BASE.deriveFont((float) (FONT_MAIN_TITLE_BASE.getSize2D() * overallScale)));
 
-        // Оновлення великих кнопок головного меню
         Font currentLargeButtonFont = FONT_BUTTON_LARGE_BASE.deriveFont((float) (FONT_BUTTON_LARGE_BASE.getSize2D() * overallScale));
         playButton.setFont(currentLargeButtonFont);
         guideButton.setFont(currentLargeButtonFont);
         settingsButton.setFont(currentLargeButtonFont);
         quitButton.setFont(currentLargeButtonFont);
 
-        // Оновлення малих кнопок головного меню
         Font currentSmallButtonFont = FONT_BUTTON_SMALL_BASE.deriveFont((float) (FONT_BUTTON_SMALL_BASE.getSize2D() * overallScale));
         musicButton.setFont(currentSmallButtonFont);
         soundButton.setFont(currentSmallButtonFont);
@@ -261,11 +227,9 @@ public class GameMenu extends JFrame implements ActionListener, ComponentListene
         soundButton.setMinimumSize(newToggleSize);
         soundButton.setMaximumSize(newToggleSize);
 
-        // Оновлення madeByLabel - шрифт також масштабується
         Font currentMadeByFont = FONT_MADE_BY_BASE.deriveFont((float) (FONT_MADE_BY_BASE.getSize2D() * overallScale));
         madeByLabel.setFont(currentMadeByFont);
 
-        // Якщо вікно дуже вузьке, зменшуємо відступи внизу
         JPanel mainContentPanel = (JPanel) getContentPane().getComponent(0);
         JPanel bottomPanel = (JPanel) mainContentPanel.getComponent(mainContentPanel.getComponentCount() - 1);
 
@@ -276,7 +240,6 @@ public class GameMenu extends JFrame implements ActionListener, ComponentListene
             bottomPanel.setBorder(new EmptyBorder(10, 20, 10, 20));
         }
 
-        // Оновлення компонентів діалогу (якщо він відкритий)
         if (playMenuDialog != null && playMenuDialog.isVisible()) {
             int dialogCurrentWidth = playMenuDialog.getWidth();
             int dialogCurrentHeight = playMenuDialog.getHeight();
@@ -295,7 +258,6 @@ public class GameMenu extends JFrame implements ActionListener, ComponentListene
             if (dialogChooseSaveButton != null) dialogChooseSaveButton.setFont(dialogButtonFont);
             if (dialogBackToMainButton != null) dialogBackToMainButton.setFont(dialogButtonFont);
 
-            // Оновлення розмірів кнопок у діалозі (аналогічно main buttons)
             Dimension dialogBtnMinSize = new Dimension((int)(200 * dialogOverallScale), (int)(60 * dialogOverallScale));
             Dimension dialogBtnMaxSize = new Dimension((int)(450 * dialogOverallScale), (int)(85 * dialogOverallScale));
 
@@ -663,10 +625,8 @@ public class GameMenu extends JFrame implements ActionListener, ComponentListene
                 e.printStackTrace();
             }
 
-            // Create GameMenu instance, but do NOT make it visible immediately
             GameMenu gameMenu = new GameMenu();
 
-            // Implement a simple splash screen or loading phase
             JFrame splashFrame = new JFrame("Loading Game...");
             splashFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
             splashFrame.setUndecorated(true);

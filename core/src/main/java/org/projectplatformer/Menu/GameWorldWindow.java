@@ -11,7 +11,6 @@ import java.awt.event.MouseEvent;
 
 public class GameWorldWindow extends JFrame implements ActionListener {
 
-    // Fantasy Colors (copied for consistency)
     private static final Color FANTASY_DARK_WOOD = new Color(60, 40, 20);
     private static final Color FANTASY_BROWN_LEATHER = new Color(100, 70, 40);
     private static final Color FANTASY_BRONZE = new Color(180, 110, 50);
@@ -27,7 +26,6 @@ public class GameWorldWindow extends JFrame implements ActionListener {
     private static Font FONT_BUTTON_BASE;
 
     static {
-        // Додаємо System.setProperty для кращого рендерингу шрифтів (як у GameMenu/Esc)
         try {
             System.setProperty("awt.useSystemAAFontSettings", "on");
             System.setProperty("swing.aatext", "true");
@@ -44,11 +42,10 @@ public class GameWorldWindow extends JFrame implements ActionListener {
     private JButton goToLevelsButton;
     private JButton backToMenuButton;
 
-    private GameMenu parentMenu; // Reference to the main GameMenu to return to it
+    private GameMenu parentMenu;
 
     public GameWorldWindow(GameMenu parent) {
         this.parentMenu = parent;
-        // ОНОВЛЕНО: Використання LanguageManager для заголовка вікна
         setTitle(LanguageManager.get("title") + " - " + LanguageManager.get("gameWorld_title"));
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setPreferredSize(new Dimension(BASE_WIDTH, BASE_HEIGHT));
@@ -88,7 +85,7 @@ public class GameWorldWindow extends JFrame implements ActionListener {
 
 
         shopButton.addActionListener(this);
-        equipmentButton.addActionListener(this); // Ця кнопка тепер відкриватиме EquipmentWindow
+        equipmentButton.addActionListener(this);
         goToLevelsButton.addActionListener(this);
         backToMenuButton.addActionListener(this);
 
@@ -102,11 +99,6 @@ public class GameWorldWindow extends JFrame implements ActionListener {
         gbc.gridy = 3;
         gbc.weighty = 1.0;
         buttonsContainerPanel.add(Box.createVerticalGlue(), gbc);
-        // FIX: Removed duplicate gbc.gridy = -1; and gbc.weighty = 1.0;
-        // gbc.gridy = -1; // This line is problematic and potentially sets gridY to an invalid value
-        // gbc.weighty = 1.0; // This line is a duplicate if the above was intended to be gbc.gridy = 4;
-        // If you need more vertical space, consider adding a fixed-size rigid area or adjusting insets/weights on existing components.
-
 
         mainPanel.add(buttonsContainerPanel, BorderLayout.CENTER);
 
@@ -166,24 +158,19 @@ public class GameWorldWindow extends JFrame implements ActionListener {
             JOptionPane.showMessageDialog(this, LanguageManager.get("gameWorld_shop_message"));
 
         } else if (e.getSource() == equipmentButton) {
-            this.setVisible(false); // Ховаємо поточне вікно GameWorldWindow
-            new EquipmentWindow(this); // Створюємо та показуємо EquipmentWindow
-            // Після закриття EquipmentWindow, GameWorldWindow не буде автоматично показано.
-            // Якщо ви хочете, щоб GameWorldWindow знову з'явилось після закриття EquipmentWindow,
-            // вам потрібно буде додати логіку в EquipmentWindow або використовувати WindowListener.
-            // Наразі, EquipmentWindow є модальним, тому виконання actionPerformed призупиниться до його закриття.
-            // Після закриття, ви можете знову показати GameWorldWindow:
-            this.setVisible(true); // Показуємо GameWorldWindow після закриття EquipmentWindow
+            this.setVisible(false);
+            new EquipmentWindow(this);
+            this.setVisible(true);
             this.revalidate();
             this.repaint();
 
         } else if (e.getSource() == goToLevelsButton) {
-            this.setVisible(false); // Ховаємо поточне вікно
-            new LevelsWindow(this); // ВІРНЕ СТВОРЕННЯ: передаємо поточний GameWorldWindow як батьківський
+            this.setVisible(false);
+            new LevelsWindow(this);
         } else if (e.getSource() == backToMenuButton) {
-            this.dispose(); // Закриваємо поточне вікно
+            this.dispose();
             if (parentMenu != null) {
-                parentMenu.showGameMenu(); // Показуємо головне меню знову
+                parentMenu.showGameMenu();
             } else {
                 System.exit(0);
             }
@@ -198,7 +185,6 @@ public class GameWorldWindow extends JFrame implements ActionListener {
         return button;
     }
 
-    // Внутрішній клас для кастомної кнопки - ЗАЛИШИВСЯ НЕЗМІННИМ
     private class FantasyButton extends JButton {
         private Color currentBackgroundColor;
         private Color defaultBaseColor;

@@ -8,8 +8,6 @@ import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 
 
-
-
 public class GuideWindow extends JDialog {
 
         private static final Color FANTASY_DARK_WOOD = new Color(60, 40, 20);

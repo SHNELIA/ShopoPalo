@@ -85,17 +85,15 @@ import java.awt.event.MouseEvent;
 
                         if (saveInfo.contains("Empty Slot")) {
                             int choice = JOptionPane.showConfirmDialog(
-                                parentMenu, // Use parentMenu for confirmation dialog
+                                parentMenu,
                                 LanguageManager.get("newGameConfirm_message"),
                                 LanguageManager.get("newGameConfirm_title"),
                                 JOptionPane.YES_NO_OPTION,
                                 JOptionPane.WARNING_MESSAGE
                             );
                             if (choice == JOptionPane.YES_OPTION) {
-                                // Hide the main menu, then show GameWorldWindow
-                                parentMenu.setVisible(false); // Hide GameMenu
-                                // CORRECTED LINE 95: Pass parentMenu to the constructor
-                                new GameWorldWindow(parentMenu); // Create and show GameWorldWindow
+                                parentMenu.setVisible(false);
+                                new GameWorldWindow(parentMenu);
                             }
                         } else {
                             JOptionPane.showMessageDialog(
@@ -104,10 +102,8 @@ import java.awt.event.MouseEvent;
                                 LanguageManager.get("loadGame_title"),
                                 JOptionPane.INFORMATION_MESSAGE
                             );
-                            // Hide the main menu, then show GameWorldWindow
-                            parentMenu.setVisible(false); // Hide GameMenu
-                            // CORRECTED LINE 106: Pass parentMenu to the constructor
-                            new GameWorldWindow(parentMenu); // Create and show GameWorldWindow
+                            parentMenu.setVisible(false);
+                            new GameWorldWindow(parentMenu);
                         }
                     }
                 });
